@@ -2,14 +2,21 @@
 
 // ── Lexer ────────────────────────────────────────────────────────────────────
 
-export type TokenType = 'KEYWORD' | 'STRING' | 'NUMBER' | 'UNIT' | 'IDENT' | 'OP' | 'EOF';
+export type TokenType =
+  | "KEYWORD"
+  | "STRING"
+  | "NUMBER"
+  | "UNIT"
+  | "IDENT"
+  | "OP"
+  | "EOF";
 
 export interface Token {
   type: TokenType;
   value: string;
   line: number;
   col: number;
-  subtype?: 'direccion' | 'sensor';
+  subtype?: "direccion" | "sensor";
 }
 
 export interface LexError {
@@ -26,19 +33,19 @@ export interface LexResult {
 // ── AST ──────────────────────────────────────────────────────────────────────
 
 export interface ProgramaNode {
-  type: 'programa';
+  type: "programa";
   misiones: MisionNode[];
 }
 
 export interface MisionNode {
-  type: 'mision';
+  type: "mision";
   nombre: string;
   bloque: BloqueNode;
   line: number;
 }
 
 export interface BloqueNode {
-  type: 'bloque';
+  type: "bloque";
   cmds: CmdNode[];
 }
 
@@ -51,15 +58,15 @@ export type CmdNode =
   | ErrorNode;
 
 export interface DespecarNode {
-  type: 'despegar';
+  type: "despegar";
   altitud: string;
   unidad: string | null;
   line: number;
 }
 
 export interface MoverNode {
-  type: 'mover';
-  modo: 'base' | 'direccion';
+  type: "mover";
+  modo: "base" | "direccion";
   direccion?: string;
   distancia?: string;
   unidad?: string | null;
@@ -68,12 +75,12 @@ export interface MoverNode {
 }
 
 export interface AterrizarNode {
-  type: 'aterrizar';
+  type: "aterrizar";
   line: number;
 }
 
 export interface SensorNode {
-  type: 'sensor';
+  type: "sensor";
   sensor: string;
   frecuencia: string;
   unidad: string | null;
@@ -81,7 +88,7 @@ export interface SensorNode {
 }
 
 export interface CondicionalNode {
-  type: 'condicional';
+  type: "condicional";
   variable: string;
   op: string;
   valor: string;
@@ -90,7 +97,7 @@ export interface CondicionalNode {
 }
 
 export interface ErrorNode {
-  type: 'error';
+  type: "error";
   line: number;
 }
 
@@ -115,4 +122,4 @@ export interface AnalyzerResult {
   errors: Array<LexError | ParseError>;
 }
 
-export type TabId = 'tokens' | 'ast' | 'gramatica' | 'simulacion' | 'errores';
+export type TabId = "tokens" | "ast" | "gramatica" | "simulacion" | "errores";
