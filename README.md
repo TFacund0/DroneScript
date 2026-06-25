@@ -79,3 +79,28 @@ pnpm typecheck
 ```
 *(O `npm run typecheck` con npm)*
 
+### 6. Ejecución de Pruebas (Testing)
+
+El proyecto cuenta con suites de pruebas unitarias y de integración para validar el funcionamiento del Lexer y el Parser.
+
+#### Pruebas Unitarias (con Vitest)
+Para correr las pruebas unitarias:
+```bash
+pnpm test
+```
+*(O `npm run test` con npm)*
+
+Para correr las pruebas unitarias en modo interactivo/watch:
+```bash
+pnpm test:watch
+```
+*(O `npm run test:watch` con npm)*
+
+#### Pruebas de Integración Generales
+Para correr el pipeline completo sobre el catálogo de casos de prueba definidos en `tests/cases.json`:
+```bash
+pnpm test:integration
+```
+*(O `npm run test:integration` con npm)*
+
+
