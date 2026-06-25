@@ -710,7 +710,7 @@ export default function DroneVisualizer({ ast, errors }: Props) {
   ): React.CSSProperties => ({
     background: bg,
     color,
-    border: `1px solid ${color}44`,
+    border: `1px solid ${color.startsWith("var") ? "var(--border)" : `${color}44`}`,
     padding: "6px 14px",
     borderRadius: 4,
     cursor: disabled ? "not-allowed" : "pointer",
@@ -726,7 +726,7 @@ export default function DroneVisualizer({ ast, errors }: Props) {
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        background: "#0d0f14",
+        background: "var(--bg-app)",
       }}
     >
       <div
@@ -896,9 +896,9 @@ export default function DroneVisualizer({ ast, errors }: Props) {
       {!noSteps && !hasErrors && (
         <div
           style={{
-            borderTop: "1px solid #252a38",
+            borderTop: "1px solid var(--border)",
             padding: "10px 16px",
-            background: "#13161e",
+            background: "var(--bg-panel)",
           }}
         >
           <div
@@ -920,7 +920,7 @@ export default function DroneVisualizer({ ast, errors }: Props) {
                 style={{
                   padding: "3px 8px",
                   borderRadius: 3,
-                  border: `1px solid ${i === currentStep ? STEP_COLOR[step.kind] : "#252a38"}`,
+                  border: `1px solid ${i === currentStep ? STEP_COLOR[step.kind] : "var(--border)"}`,
                   cursor: "pointer",
                   fontSize: 11,
                   ...mono,
@@ -928,14 +928,14 @@ export default function DroneVisualizer({ ast, errors }: Props) {
                     i === currentStep
                       ? `${STEP_COLOR[step.kind]}22`
                       : i < currentStep
-                        ? "#1a1e28"
-                        : "#0d0f14",
+                        ? "var(--bg-panel)"
+                        : "var(--bg-app)",
                   color:
                     i === currentStep
                       ? STEP_COLOR[step.kind]
                       : i < currentStep
-                        ? "#6b7280"
-                        : "#252a38",
+                        ? "var(--text-muted)"
+                        : "var(--border)",
                   transition: "all 0.15s",
                 }}
               >
@@ -953,7 +953,7 @@ export default function DroneVisualizer({ ast, errors }: Props) {
               }}
             >
               {steps[currentStep]?.label}{" "}
-              <span style={{ color: "#6b7280" }}>
+              <span style={{ color: "var(--text-muted)" }}>
                 — paso {currentStep + 1}/{steps.length}
               </span>
             </div>
@@ -965,7 +965,7 @@ export default function DroneVisualizer({ ast, errors }: Props) {
                 setCurrentStep(-1);
                 dronePosRef.current = { x: 0, y: 0, z: 0 };
               }}
-              style={btnStyle("#1a1e28", "#6b7280")}
+              style={btnStyle("var(--bg-panel)", "var(--text-muted)")}
             >
               ↩ Reset
             </button>
@@ -975,7 +975,7 @@ export default function DroneVisualizer({ ast, errors }: Props) {
                 setCurrentStep((p) => Math.max(-1, p - 1));
               }}
               disabled={currentStep < 0}
-              style={btnStyle("#1a1e28", "#4d9eff", currentStep < 0)}
+              style={btnStyle("var(--bg-panel)", "#4d9eff", currentStep < 0)}
             >
               ◀
             </button>
@@ -995,7 +995,7 @@ export default function DroneVisualizer({ ast, errors }: Props) {
               }}
               disabled={currentStep >= steps.length - 1}
               style={btnStyle(
-                "#1a1e28",
+                "var(--bg-panel)",
                 "#4d9eff",
                 currentStep >= steps.length - 1,
               )}
@@ -1004,17 +1004,17 @@ export default function DroneVisualizer({ ast, errors }: Props) {
             </button>
 
             {/* Separador vertical y botones de velocidad */}
-            <div style={{ width: 1, background: "#252a38", margin: "0 6px" }} />
+            <div style={{ width: 1, background: "var(--border)", margin: "0 6px" }} />
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              <span style={{ color: "#6b7280", fontSize: 11, marginRight: 4, ...mono }}>Velocidad:</span>
+              <span style={{ color: "var(--text-muted)", fontSize: 11, marginRight: 4, ...mono }}>Velocidad:</span>
               {([0.5, 1, 2] as const).map((spd) => (
                 <button
                   key={spd}
                   onClick={() => setSpeedMultiplier(spd)}
                   style={{
-                    background: speedMultiplier === spd ? "rgba(77, 158, 255, 0.15)" : "#1a1e28",
-                    color: speedMultiplier === spd ? "#4d9eff" : "#6b7280",
-                    border: `1px solid ${speedMultiplier === spd ? "#4d9eff" : "#252a38"}`,
+                    background: speedMultiplier === spd ? "rgba(77, 158, 255, 0.15)" : "var(--bg-panel)",
+                    color: speedMultiplier === spd ? "#4d9eff" : "var(--text-muted)",
+                    border: `1px solid ${speedMultiplier === spd ? "#4d9eff" : "var(--border)"}`,
                     padding: "4px 8px",
                     borderRadius: 3,
                     cursor: "pointer",

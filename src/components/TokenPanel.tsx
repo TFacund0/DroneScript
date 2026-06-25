@@ -61,7 +61,7 @@ export default function TokenPanel({ result }: Props) {
           fontSize: 10,
           letterSpacing: 2,
           textTransform: "uppercase",
-          color: "#6b7280",
+          color: "var(--text-muted)",
           marginBottom: 12,
           fontFamily: "'Space Mono', monospace",
         }}
@@ -78,7 +78,7 @@ export default function TokenPanel({ result }: Props) {
               gap: 12,
               padding: "6px 10px",
               borderRadius: 4,
-              background: "#13161e",
+              background: "var(--bg-panel)",
               alignItems: "center",
               fontFamily: "'Space Mono', monospace",
             }}
@@ -87,16 +87,16 @@ export default function TokenPanel({ result }: Props) {
               style={{
                 fontSize: 11,
                 fontWeight: 700,
-                color: TYPE_COLORS[tok.type] || "#e8ecf5",
+                color: TYPE_COLORS[tok.type] || "var(--text-main)",
               }}
             >
               {tok.type}
             </span>
-            <span style={{ color: "#e8ecf5", opacity: 0.85, fontSize: 12 }}>
+            <span style={{ color: "var(--text-main)", opacity: 0.85, fontSize: 12 }}>
               {tok.value}
             </span>
             <span
-              style={{ color: "#6b7280", textAlign: "right", fontSize: 10 }}
+              style={{ color: "var(--text-muted)", textAlign: "right", fontSize: 10 }}
             >
               línea {tok.line}
             </span>
