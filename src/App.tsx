@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useAnalyzer } from "./hooks/useAnalyzer";
 import Header from "./components/Header";
 import Editor from "./components/Editor";
@@ -33,6 +33,7 @@ function countNodes(node: unknown): number {
 
 export default function App() {
   const { code, setCode, result, tab, setTab, analyze } = useAnalyzer();
+  const [isDark, setIsDark] = useState(true);
 
   const visibleTokens = result?.tokens.filter((t) => t.type !== "EOF") || [];
   const errors = result?.errors || [];
@@ -48,12 +49,21 @@ export default function App() {
   return (
     <div
       style={{
-        minHeight: "100vh",
-        background: "#0d0f14",
+        height: "100vh",
+        background: isDark ? "#0d0f14" : "#ffffff",
         fontFamily: "'Syne', 'Inter', sans-serif",
-        color: "#e8ecf5",
+        color: isDark ? "#e8ecf5" : "#0f172a",
         display: "flex",
         flexDirection: "column",
+        overflow: "hidden",
+        ...({
+          "--bg-app": isDark ? "#0d0f14" : "#ffffff",
+          "--bg-panel": isDark ? "#13161e" : "#f1f5f9",
+          "--text-main": isDark ? "#e8ecf5" : "#0f172a",
+          "--text-muted": isDark ? "#6b7280" : "#475569",
+          "--border": isDark ? "#252a38" : "#cbd5e1",
+          "--scroll-thumb": isDark ? "#252a38" : "#cbd5e1",
+        } as React.CSSProperties),
       }}
     >
       <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -62,31 +72,32 @@ export default function App() {
         rel="stylesheet"
       />
 
-      <Header />
+      <Header isDark={isDark} toggleTheme={() => setIsDark(!isDark)} />
 
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
           flex: 1,
-          height: "calc(100vh - 61px)",
+          minHeight: 0,
           overflow: "hidden",
         }}
       >
-        <Editor code={code} setCode={setCode} onAnalyze={analyze} />
+        <Editor code={code} setCode={setCode} onAnalyze={analyze} isDark={isDark} />
 
         <div
           style={{
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
+            minHeight: 0,
           }}
         >
           <div
             style={{
               display: "flex",
-              borderBottom: "1px solid #252a38",
-              background: "#13161e",
+              borderBottom: isDark ? "1px solid #252a38" : "1px solid #cbd5e1",
+              background: isDark ? "#13161e" : "#f1f5f9",
             }}
           >
             {TABS.map((t) => (
@@ -94,12 +105,12 @@ export default function App() {
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 style={{
-                  padding: "12px 20px",
+                  padding: "10px 16px",
                   fontSize: 11,
                   fontFamily: "'Space Mono', monospace",
                   letterSpacing: 1,
                   textTransform: "uppercase",
-                  color: tab === t.id ? "#00e5a0" : "#6b7280",
+                  color: tab === t.id ? "#00e5a0" : (isDark ? "#6b7280" : "#475569"),
                   background: "transparent",
                   border: "none",
                   borderBottom:
@@ -119,9 +130,10 @@ export default function App() {
           <div
             style={{
               flex: 1,
+              minHeight: 0,
               overflow: tab === "simulacion" ? "hidden" : "auto",
-              padding: tab === "simulacion" ? 0 : 18,
-              background: tab === "simulacion" ? "#0a0f1e" : "#0d0f14",
+              padding: tab === "simulacion" ? 0 : 14,
+              background: tab === "simulacion" ? "#0a0f1e" : (isDark ? "#0d0f14" : "#ffffff"),
               fontFamily: "'Space Mono', monospace",
               fontSize: 12,
               lineHeight: 1.7,
@@ -135,7 +147,7 @@ export default function App() {
                   alignItems: "center",
                   justifyContent: "center",
                   height: 200,
-                  color: "#6b7280",
+                  color: isDark ? "#6b7280" : "#475569",
                   fontSize: 12,
                   gap: 8,
                 }}
@@ -158,24 +170,24 @@ export default function App() {
 
           <div
             style={{
-              padding: "8px 18px",
+              padding: "6px 14px",
               fontSize: 11,
               fontFamily: "'Space Mono', monospace",
-              borderTop: "1px solid #252a38",
-              background: "#13161e",
+              borderTop: isDark ? "1px solid #252a38" : "1px solid #cbd5e1",
+              background: isDark ? "#13161e" : "#f1f5f9",
               display: "flex",
               alignItems: "center",
               gap: 12,
             }}
           >
             {!result && (
-              <span style={{ color: "#6b7280" }}>— listo para analizar</span>
+              <span style={{ color: isDark ? "#6b7280" : "#475569" }}>— listo para analizar</span>
             )}
             {result && isValid && (
               <>
                 <span style={{ color: "#00e5a0" }}>✓ Aceptado</span>
-                <span style={{ color: "#6b7280" }}>·</span>
-                <span style={{ color: "#6b7280" }}>
+                <span style={{ color: isDark ? "#6b7280" : "#475569" }}>·</span>
+                <span style={{ color: isDark ? "#6b7280" : "#475569" }}>
                   {visibleTokens.length} tokens · {countNodes(result.ast)} nodos
                   en AST
                 </span>
@@ -195,7 +207,7 @@ export default function App() {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #252a38; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 2px; }
       `}</style>
     </div>
   );

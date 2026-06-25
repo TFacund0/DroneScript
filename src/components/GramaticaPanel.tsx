@@ -80,7 +80,7 @@ const tokenRules = [
 
 const mono: React.CSSProperties = { fontFamily: "'Space Mono', monospace" };
 const row: React.CSSProperties = {
-  borderBottom: "1px solid #252a38",
+  borderBottom: "1px solid var(--border)",
   padding: "6px 0",
 };
 
@@ -92,7 +92,7 @@ export default function GramaticaPanel() {
           fontSize: 10,
           letterSpacing: 2,
           textTransform: "uppercase",
-          color: "#6b7280",
+          color: "var(--text-muted)",
           marginBottom: 12,
         }}
       >
@@ -101,14 +101,14 @@ export default function GramaticaPanel() {
       {rules.map((r, i) => (
         <div key={i} style={row}>
           <span style={{ color: "#4d9eff" }}>{r.lhs}</span>
-          <span style={{ color: "#6b7280", margin: "0 8px" }}>→</span>
+          <span style={{ color: "var(--text-muted)", margin: "0 8px" }}>→</span>
           {r.rhs.map((part, j) =>
             part.kw ? (
               <span key={j} style={{ color: "#00e5a0", fontWeight: 700 }}>
                 {part.kw}
               </span>
             ) : (
-              <span key={j} style={{ color: "#e8ecf5", opacity: 0.8 }}>
+              <span key={j} style={{ color: "var(--text-main)", opacity: 0.8 }}>
                 {part.t}
               </span>
             ),
@@ -120,7 +120,7 @@ export default function GramaticaPanel() {
           fontSize: 10,
           letterSpacing: 2,
           textTransform: "uppercase",
-          color: "#6b7280",
+          color: "var(--text-muted)",
           margin: "20px 0 12px",
         }}
       >
@@ -129,8 +129,8 @@ export default function GramaticaPanel() {
       {tokenRules.map((t, i) => (
         <div key={i} style={row}>
           <span style={{ color: t.color }}>{t.name}</span>
-          <span style={{ color: "#6b7280", margin: "0 8px" }}>→</span>
-          <span style={{ color: "#6b7280" }}>{t.regex}</span>
+          <span style={{ color: "var(--text-muted)", margin: "0 8px" }}>→</span>
+          <span style={{ color: "var(--text-muted)" }}>{t.regex}</span>
         </div>
       ))}
     </div>

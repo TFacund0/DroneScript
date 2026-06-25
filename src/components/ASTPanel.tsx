@@ -79,8 +79,8 @@ function ASTNodeComp({
   const [open, setOpen] = useState(true);
   const style = NODE_STYLES[node.type] || {
     bg: "#1a1e2815",
-    color: "#6b7280",
-    border: "#252a38",
+    color: "var(--text-muted)",
+    border: "var(--border)",
   };
   const label = getLabel(node);
   const children = getChildren(node);
@@ -97,7 +97,7 @@ function ASTNodeComp({
             top: 16,
             width: 12,
             height: 1,
-            background: "#252a38",
+            background: "var(--border)",
           }}
         />
       )}
@@ -109,7 +109,7 @@ function ASTNodeComp({
             top: 0,
             bottom: 0,
             width: 1,
-            background: "#252a38",
+            background: "var(--border)",
           }}
         />
       )}
@@ -143,7 +143,7 @@ function ASTNodeComp({
         )}
         {label}
         {line && (
-          <span style={{ color: "#6b7280", fontSize: 10, marginLeft: 4 }}>
+          <span style={{ color: "var(--text-muted)", fontSize: 10, marginLeft: 4 }}>
             :{line}
           </span>
         )}
@@ -217,7 +217,7 @@ export default function ASTPanel({ result }: Props) {
           fontSize: 10,
           letterSpacing: 2,
           textTransform: "uppercase",
-          color: "#6b7280",
+          color: "var(--text-muted)",
           marginBottom: 12,
           fontFamily: "'Space Mono', monospace",
         }}
