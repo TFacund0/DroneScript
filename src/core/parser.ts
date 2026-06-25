@@ -14,194 +14,302 @@ import type {
   ErrorNode,
 } from "../types";
 
-export function parse(tokens: Token[]): ParseResult {
-  let pos = 0;
-  const errors: ParseError[] = [];
+/**
+ * Analizador sintáctico (Parser) para el lenguaje DroneScript.
+ * Se encarga de procesar la secuencia de tokens y construir el Árbol Sintáctico Abstracto (AST).
+ */
+export class Parser {
+  private listaTokens: Token[];
+  private posicionActual = 0;
+  private errores: ParseError[] = [];
 
-  function peek(): Token {
-    return tokens[pos] || { type: "EOF", value: "", line: 0, col: 0 };
+  constructor(tokens: Token[]) {
+    this.listaTokens = tokens;
   }
 
-  function consume(
-    expectedType: string,
-    expectedValue: string | null = null,
+  /**
+   * Devuelve el token actual bajo análisis sin avanzar de posición.
+   */
+  private peek(): Token {
+    return (
+      this.listaTokens[this.posicionActual] || {
+        type: "EOF",
+        value: "",
+        line: 0,
+        col: 0,
+      }
+    );
+  }
+
+  /**
+   * Valida y consume el token actual si coincide con el tipo y/o valor esperado.
+   * Avanza la posición del cursor de lectura y reporta un error si no coincide.
+   */
+  private consume(
+    tipoEsperado: string,
+    valorEsperado: string | null = null,
   ): Token {
-    const tok = peek();
+    const tokenActual = this.peek();
     if (
-      tok.type === expectedType &&
-      (expectedValue === null || tok.value === expectedValue)
+      tokenActual.type === tipoEsperado &&
+      (valorEsperado === null || tokenActual.value === valorEsperado)
     ) {
-      pos++;
-      return tok;
+      this.posicionActual++;
+      return tokenActual;
     }
-    const expected = expectedValue ? `'${expectedValue}'` : expectedType;
-    const found = tok.value ? `'${tok.value}'` : tok.type;
-    errors.push({
-      message: `Error sintáctico en línea ${tok.line}: se esperaba ${expected} pero se encontró ${found}`,
-      line: tok.line,
-      col: tok.col,
+    const esperado = valorEsperado ? `'${valorEsperado}'` : tipoEsperado;
+    const encontrado = tokenActual.value
+      ? `'${tokenActual.value}'`
+      : tokenActual.type;
+    this.errores.push({
+      message: `Error sintáctico en línea ${tokenActual.line}: se esperaba ${esperado} pero se encontró ${encontrado}`,
+      line: tokenActual.line,
+      col: tokenActual.col,
     });
-    pos++;
-    return tok;
+    this.posicionActual++;
+    return tokenActual;
   }
 
-  function isKeyword(value: string): boolean {
-    const t = peek();
-    return t.type === "KEYWORD" && t.value === value;
+  /**
+   * Comprueba si el token actual es una palabra clave con el valor especificado.
+   */
+  private isKeyword(valor: string): boolean {
+    const token = this.peek();
+    return token.type === "KEYWORD" && token.value === valor;
   }
 
-  function parsePrograma(): ProgramaNode {
-    const node: ProgramaNode = { type: "programa", misiones: [] };
-    if (!isKeyword("MISION")) {
-      const tok = peek();
-      errors.push({
-        message: `Error sintáctico en línea ${tok.line}: se esperaba el inicio de una misión ('MISION')`,
-        line: tok.line,
-        col: tok.col,
+  /**
+   * Ejecuta el análisis sintáctico completo sobre la secuencia de tokens.
+   * @returns Un objeto conteniendo el nodo raíz del AST y la lista de errores sintácticos.
+   */
+  public parse(): ParseResult {
+    this.posicionActual = 0;
+    this.errores = [];
+    const ast = this.parsePrograma();
+    return { ast, errors: this.errores };
+  }
+
+  /**
+   * Regla: programa → mision lista_misiones
+   * Procesa la lista completa de misiones del programa.
+   */
+  private parsePrograma(): ProgramaNode {
+    const nodoPrograma: ProgramaNode = { type: "programa", misiones: [] };
+    if (!this.isKeyword("MISION")) {
+      const token = this.peek();
+      this.errores.push({
+        message: `Error sintáctico en línea ${token.line}: se esperaba el inicio de una misión ('MISION')`,
+        line: token.line,
+        col: token.col,
       });
     }
-    while (isKeyword("MISION")) node.misiones.push(parseMision());
-    if (peek().type !== "EOF") {
-      const tok = peek();
-      errors.push({
-        message: `Error sintáctico en línea ${tok.line}: token inesperado '${tok.value}' fuera de una misión`,
-        line: tok.line,
-        col: tok.col,
+    while (this.isKeyword("MISION")) {
+      nodoPrograma.misiones.push(this.parseMision());
+    }
+    if (this.peek().type !== "EOF") {
+      const token = this.peek();
+      this.errores.push({
+        message: `Error sintáctico en línea ${token.line}: token inesperado '${token.value}' fuera de una misión`,
+        line: token.line,
+        col: token.col,
       });
     }
-    return node;
+    return nodoPrograma;
   }
 
-  function parseMision(): MisionNode {
-    const tok = consume("KEYWORD", "MISION");
-    const nombre = consume("STRING");
-    const bloque = parseBloque();
-    consume("KEYWORD", "FIN");
-    return { type: "mision", nombre: nombre.value, bloque, line: tok.line };
+  /**
+   * Regla: mision → MISION STRING bloque FIN
+   * Parsea una misión individual delimitada por las palabras clave MISION y FIN.
+   */
+  private parseMision(): MisionNode {
+    const tokenMision = this.consume("KEYWORD", "MISION");
+    const nombreMision = this.consume("STRING");
+    const bloqueMision = this.parseBloque();
+    this.consume("KEYWORD", "FIN");
+    return {
+      type: "mision",
+      nombre: nombreMision.value,
+      bloque: bloqueMision,
+      line: tokenMision.line,
+    };
   }
 
-  function parseBloque(): BloqueNode {
-    const cmds: CmdNode[] = [];
+  /**
+   * Regla: bloque → cmd bloque | λ
+   * Parsea una lista secuencial de comandos dentro de una misión.
+   */
+  private parseBloque(): BloqueNode {
+    const comandos: CmdNode[] = [];
     while (
-      isKeyword("DESPEGAR") ||
-      isKeyword("MOVER") ||
-      isKeyword("ATERRIZAR") ||
-      isKeyword("SENSOR") ||
-      isKeyword("SI")
-    )
-      cmds.push(parseCmd());
-    return { type: "bloque", cmds };
-  }
-
-  function parseCmd(): CmdNode {
-    if (isKeyword("DESPEGAR")) return parseDespegar();
-    if (isKeyword("MOVER")) return parseMover();
-    if (isKeyword("ATERRIZAR")) return parseAterrizar();
-    if (isKeyword("SENSOR")) return parseSensorCmd();
-    if (isKeyword("SI")) return parseCondicional();
-    const tok = peek();
-    errors.push({
-      message: `Error sintáctico en línea ${tok.line}: token inesperado '${tok.value}'`,
-      line: tok.line,
-      col: tok.col,
-    });
-    pos++;
-    return { type: "error", line: tok.line } as ErrorNode;
-  }
-
-  function parseDespegar(): DespecarNode {
-    const tok = consume("KEYWORD", "DESPEGAR");
-    consume("KEYWORD", "ALTITUD");
-    const numero = consume("NUMBER");
-    const unidad = parseUnidadOpcional();
-    return { type: "despegar", altitud: numero.value, unidad, line: tok.line };
-  }
-
-  function parseMover(): MoverNode {
-    const tok = consume("KEYWORD", "MOVER");
-    if (isKeyword("BASE")) {
-      consume("KEYWORD", "BASE");
-      return { type: "mover", modo: "base", line: tok.line };
+      this.isKeyword("DESPEGAR") ||
+      this.isKeyword("MOVER") ||
+      this.isKeyword("ATERRIZAR") ||
+      this.isKeyword("SENSOR") ||
+      this.isKeyword("SI")
+    ) {
+      comandos.push(this.parseCmd());
     }
-    const dir = consume("IDENT");
-    if (dir.type === "IDENT" && dir.subtype !== "direccion") {
-      errors.push({
-        message: `Error sintáctico en línea ${dir.line}: se esperaba una dirección (como norte, sur, este, oeste, etc.) pero se encontró '${dir.value}'`,
-        line: dir.line,
-        col: dir.col,
+    return { type: "bloque", cmds: comandos };
+  }
+
+  /**
+   * Regla: cmd → despegar | mover | aterrizar | sensor_cmd | condicional
+   * Deriva el parser hacia la subregla del comando correspondiente.
+   */
+  private parseCmd(): CmdNode {
+    if (this.isKeyword("DESPEGAR")) return this.parseDespegar();
+    if (this.isKeyword("MOVER")) return this.parseMover();
+    if (this.isKeyword("ATERRIZAR")) return this.parseAterrizar();
+    if (this.isKeyword("SENSOR")) return this.parseSensorCmd();
+    if (this.isKeyword("SI")) return this.parseCondicional();
+
+    const tokenInesperado = this.peek();
+    this.errores.push({
+      message: `Error sintáctico en línea ${tokenInesperado.line}: token inesperado '${tokenInesperado.value}'`,
+      line: tokenInesperado.line,
+      col: tokenInesperado.col,
+    });
+    this.posicionActual++;
+    return { type: "error", line: tokenInesperado.line } as ErrorNode;
+  }
+
+  /**
+   * Regla: despegar → DESPEGAR ALTITUD NUMBER unidad_opcional
+   * Parsea la instrucción para elevar el dron.
+   */
+  private parseDespegar(): DespecarNode {
+    const tokenDespegar = this.consume("KEYWORD", "DESPEGAR");
+    this.consume("KEYWORD", "ALTITUD");
+    const tokenNumero = this.consume("NUMBER");
+    const unidadOpcional = this.parseUnidadOpcional();
+    return {
+      type: "despegar",
+      altitud: tokenNumero.value,
+      unidad: unidadOpcional,
+      line: tokenDespegar.line,
+    };
+  }
+
+  /**
+   * Regla: mover → MOVER movimiento | MOVER BASE
+   * Parsea la instrucción de movimiento espacial o retorno a base.
+   */
+  private parseMover(): MoverNode {
+    const tokenMover = this.consume("KEYWORD", "MOVER");
+    if (this.isKeyword("BASE")) {
+      this.consume("KEYWORD", "BASE");
+      return { type: "mover", modo: "base", line: tokenMover.line };
+    }
+    const tokenDireccion = this.consume("IDENT");
+    if (
+      tokenDireccion.type === "IDENT" &&
+      tokenDireccion.subtype !== "direccion"
+    ) {
+      this.errores.push({
+        message: `Error sintáctico en línea ${tokenDireccion.line}: se esperaba una dirección (como norte, sur, este, oeste, etc.) pero se encontró '${tokenDireccion.value}'`,
+        line: tokenDireccion.line,
+        col: tokenDireccion.col,
       });
     }
-    const distancia = consume("NUMBER");
-    const unidad = parseUnidadOpcional();
-    const velocidad = parseVelocidadOpcional();
+    const tokenDistancia = this.consume("NUMBER");
+    const unidadOpcional = this.parseUnidadOpcional();
+    const velocidadOpcional = this.parseVelocidadOpcional();
     return {
       type: "mover",
       modo: "direccion",
-      direccion: dir.value,
-      distancia: distancia.value,
-      unidad,
-      velocidad,
-      line: tok.line,
+      direccion: tokenDireccion.value,
+      distancia: tokenDistancia.value,
+      unidad: unidadOpcional,
+      velocidad: velocidadOpcional,
+      line: tokenMover.line,
     };
   }
 
-  function parseAterrizar(): AterrizarNode {
-    const tok = consume("KEYWORD", "ATERRIZAR");
-    return { type: "aterrizar", line: tok.line };
+  /**
+   * Regla: aterrizar → ATERRIZAR
+   * Parsea el comando para posar al dron sobre tierra.
+   */
+  private parseAterrizar(): AterrizarNode {
+    const tokenAterrizar = this.consume("KEYWORD", "ATERRIZAR");
+    return { type: "aterrizar", line: tokenAterrizar.line };
   }
 
-  function parseSensorCmd(): SensorNode {
-    const tok = consume("KEYWORD", "SENSOR");
-    const tipoSensor = consume("IDENT");
-    if (tipoSensor.type === "IDENT" && tipoSensor.subtype !== "sensor") {
-      errors.push({
-        message: `Error sintáctico en línea ${tipoSensor.line}: se esperaba un tipo de sensor (como temperatura, bateria, altura, etc.) pero se encontró '${tipoSensor.value}'`,
-        line: tipoSensor.line,
-        col: tipoSensor.col,
+  /**
+   * Regla: sensor_cmd → SENSOR tipo_sensor FRECUENCIA NUMBER unidad_opcional
+   * Parsea la configuración de frecuencia de monitoreo de sensores.
+   */
+  private parseSensorCmd(): SensorNode {
+    const tokenSensor = this.consume("KEYWORD", "SENSOR");
+    const tokenTipoSensor = this.consume("IDENT");
+    if (
+      tokenTipoSensor.type === "IDENT" &&
+      tokenTipoSensor.subtype !== "sensor"
+    ) {
+      this.errores.push({
+        message: `Error sintáctico en línea ${tokenTipoSensor.line}: se esperaba un tipo de sensor (como temperatura, bateria, altura, etc.) pero se encontró '${tokenTipoSensor.value}'`,
+        line: tokenTipoSensor.line,
+        col: tokenTipoSensor.col,
       });
     }
-    consume("KEYWORD", "FRECUENCIA");
-    const frecuencia = consume("NUMBER");
-    const unidad = parseUnidadOpcional();
+    this.consume("KEYWORD", "FRECUENCIA");
+    const tokenFrecuencia = this.consume("NUMBER");
+    const unidadOpcional = this.parseUnidadOpcional();
     return {
       type: "sensor",
-      sensor: tipoSensor.value,
-      frecuencia: frecuencia.value,
-      unidad,
-      line: tok.line,
+      sensor: tokenTipoSensor.value,
+      frecuencia: tokenFrecuencia.value,
+      unidad: unidadOpcional,
+      line: tokenSensor.line,
     };
   }
 
-  function parseCondicional(): CondicionalNode {
-    const tok = consume("KEYWORD", "SI");
-    const variable = consume("IDENT");
-    const op = consume("OP");
-    const valor = consume("NUMBER");
-    consume("KEYWORD", "ENTONCES");
-    const cmd = parseCmd();
-    consume("KEYWORD", "FIN");
+  /**
+   * Regla: condicional → SI IDENT op NUMBER ENTONCES cmd FIN
+   * Parsea comandos condicionales reactivos.
+   */
+  private parseCondicional(): CondicionalNode {
+    const tokenSi = this.consume("KEYWORD", "SI");
+    const tokenVariable = this.consume("IDENT");
+    const tokenOperador = this.consume("OP");
+    const tokenValor = this.consume("NUMBER");
+    this.consume("KEYWORD", "ENTONCES");
+    const comandoCondicional = this.parseCmd();
+    this.consume("KEYWORD", "FIN");
     return {
       type: "condicional",
-      variable: variable.value,
-      op: op.value,
-      valor: valor.value,
-      cmd,
-      line: tok.line,
+      variable: tokenVariable.value,
+      op: tokenOperador.value,
+      valor: tokenValor.value,
+      cmd: comandoCondicional,
+      line: tokenSi.line,
     };
   }
 
-  function parseUnidadOpcional(): string | null {
-    if (peek().type === "UNIT") return consume("UNIT").value;
+  /**
+   * Regla: unidad_opcional → UNIT | λ
+   * Obtiene la unidad de medida si se encuentra presente.
+   */
+  private parseUnidadOpcional(): string | null {
+    if (this.peek().type === "UNIT") return this.consume("UNIT").value;
     return null;
   }
 
-  function parseVelocidadOpcional(): string | null {
-    if (isKeyword("VELOCIDAD")) {
-      consume("KEYWORD", "VELOCIDAD");
-      return consume("NUMBER").value;
+  /**
+   * Regla: velocidad_opcional → VELOCIDAD NUMBER | λ
+   * Obtiene el valor opcional de velocidad.
+   */
+  private parseVelocidadOpcional(): string | null {
+    if (this.isKeyword("VELOCIDAD")) {
+      this.consume("KEYWORD", "VELOCIDAD");
+      return this.consume("NUMBER").value;
     }
     return null;
   }
+}
 
-  return { ast: parsePrograma(), errors };
+/**
+ * Función puente compatible con el frontend para procesar tokens y generar el AST.
+ */
+export function parse(tokens: Token[]): ParseResult {
+  return new Parser(tokens).parse();
 }
