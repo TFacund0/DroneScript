@@ -1,0 +1,46 @@
+[
+  {
+    "name": "Misión básica de despegue y aterrizaje (Válida)",
+    "code": "MISION \"vuelo_simple\"\n  DESPEGAR ALTITUD 50 m\n  ATERRIZAR\nFIN",
+    "expected": {
+      "errorCount": 0,
+      "tokenCount": 9,
+      "misionNombre": "\"vuelo_simple\"",
+      "commandCount": 2
+    }
+  },
+  {
+    "name": "Misión de patrulla con velocidad, sensores y condicionales (Válida)",
+    "code": "MISION \"patrulla_completa\"\n  DESPEGAR ALTITUD 100 m\n  MOVER norte 200 m VELOCIDAD 5\n  SENSOR temperatura FRECUENCIA 10 s\n  SI bateria < 20 ENTONCES\n    ATERRIZAR\n  FIN\n  MOVER BASE\n  ATERRIZAR\nFIN",
+    "expected": {
+      "errorCount": 0,
+      "tokenCount": 29,
+      "misionNombre": "\"patrulla_completa\"",
+      "commandCount": 6
+    }
+  },
+  {
+    "name": "Error sintáctico: Falta de número en comando DESPEGAR (Inválida)",
+    "code": "MISION \"error_altitud\"\n  DESPEGAR ALTITUD m\nFIN",
+    "expected": {
+      "errorCount": 1,
+      "errorMessageContains": "se esperaba NUMBER"
+    }
+  },
+  {
+    "name": "Error sintáctico: Dirección inválida en comando MOVER (Inválida)",
+    "code": "MISION \"error_direccion\"\n  MOVER mi_casa 100 m\nFIN",
+    "expected": {
+      "errorCount": 1,
+      "errorMessageContains": "se esperaba una dirección"
+    }
+  },
+  {
+    "name": "Error léxico: Caracteres no permitidos (Inválida)",
+    "code": "MISION \"error_lexico\"\n  DESPEGAR ALTITUD 50 m $\nFIN",
+    "expected": {
+      "errorCount": 1,
+      "errorMessageContains": "Carácter no reconocido"
+    }
+  }
+]
