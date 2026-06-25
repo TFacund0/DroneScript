@@ -19,8 +19,9 @@ Para demostrar formalmente que la gramática de DroneScript es LL(1), se calcula
 | **despegar** | `{ DESPEGAR }` | `{ DESPEGAR, MOVER, ATERRIZAR, SENSOR, SI, FIN }` | FIRST(despegar) = { DESPEGAR } |
 | **unidad_opcional** | `{ m, km, s, %, λ }` | `{ DESPEGAR, MOVER, ATERRIZAR, SENSOR, SI, FIN, VELOCIDAD }` | Puede ser vacía. FOLLOW incluye todo lo que puede seguir a una unidad |
 | **mover** | `{ MOVER }` | `{ DESPEGAR, MOVER, ATERRIZAR, SENSOR, SI, FIN }` | Consume MOVER y delega la decisión a resto_mover |
-| **resto_mover** | `{ norte, sur, este, oeste, noreste, noroeste, sureste, suroeste, arriba, abajo, BASE }` | `{ DESPEGAR, MOVER, ATERRIZAR, SENSOR, SI, FIN }` | Resultado de factorizar mover por izquierda. FIRST(direccion) y FIRST(BASE) son disjuntos |
-| **direccion** | `{ norte, sur, este, oeste, noreste, noroeste, sureste, suroeste, arriba, abajo }` | `{ NUMBER }` | Siempre seguido de un número de distancia. Todos son IDENT con subtype='direccion' |
+| **resto_mover** | `{ norte, sur, este, oeste, noreste, noroeste, sureste, suroeste, arriba, abajo, BASE }` | `{ DESPEGAR, MOVER, ATERRIZAR, SENSOR, SI, FIN }` | Resultado de factorizar mover por izquierda. FIRST(movimiento) y FIRST(BASE) son disjuntos |
+| **movimiento** | `{ norte, sur, este, oeste, noreste, noroeste, sureste, suroeste, arriba, abajo }` | `{ DESPEGAR, MOVER, ATERRIZAR, SENSOR, SI, FIN }` | Todos son IDENT con subtype='direccion' |
+| **direccion** | `{ norte, sur, este, oeste, noreste, noroeste, sureste, suroeste, arriba, abajo }` | `{ NUMBER }` | Siempre seguido de un número de distancia |
 | **velocidad_opcional** | `{ VELOCIDAD, λ }` | `{ DESPEGAR, MOVER, ATERRIZAR, SENSOR, SI, FIN }` | Opcional; si aparece, siempre empieza con VELOCIDAD |
 | **aterrizar** | `{ ATERRIZAR }` | `{ DESPEGAR, MOVER, ATERRIZAR, SENSOR, SI, FIN }` | Instrucción terminal sin parámetros |
 | **sensor_cmd** | `{ SENSOR }` | `{ DESPEGAR, MOVER, ATERRIZAR, SENSOR, SI, FIN }` | FIRST(sensor_cmd) = { SENSOR } |
