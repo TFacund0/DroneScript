@@ -198,7 +198,8 @@ export class Parser {
   }
 
   /**
-   * Regla: mover → MOVER movimiento | MOVER BASE
+   * Regla: mover → MOVER resto_mover
+   *        resto_mover → movimiento | BASE
    * Parsea la instrucción de movimiento espacial o retorno a base.
    */
   private parseMover(): MoverNode {
