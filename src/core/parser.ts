@@ -52,6 +52,14 @@ export function parse(tokens: Token[]): ParseResult {
 
   function parsePrograma(): ProgramaNode {
     const node: ProgramaNode = { type: "programa", misiones: [] };
+    if (!isKeyword("MISION")) {
+      const tok = peek();
+      errors.push({
+        message: `Error sintáctico en línea ${tok.line}: se esperaba el inicio de una misión ('MISION')`,
+        line: tok.line,
+        col: tok.col,
+      });
+    }
     while (isKeyword("MISION")) node.misiones.push(parseMision());
     if (peek().type !== "EOF") {
       const tok = peek();
@@ -116,6 +124,13 @@ export function parse(tokens: Token[]): ParseResult {
       return { type: "mover", modo: "base", line: tok.line };
     }
     const dir = consume("IDENT");
+    if (dir.type === "IDENT" && dir.subtype !== "direccion") {
+      errors.push({
+        message: `Error sintáctico en línea ${dir.line}: se esperaba una dirección (como norte, sur, este, oeste, etc.) pero se encontró '${dir.value}'`,
+        line: dir.line,
+        col: dir.col,
+      });
+    }
     const distancia = consume("NUMBER");
     const unidad = parseUnidadOpcional();
     const velocidad = parseVelocidadOpcional();
@@ -138,6 +153,13 @@ export function parse(tokens: Token[]): ParseResult {
   function parseSensorCmd(): SensorNode {
     const tok = consume("KEYWORD", "SENSOR");
     const tipoSensor = consume("IDENT");
+    if (tipoSensor.type === "IDENT" && tipoSensor.subtype !== "sensor") {
+      errors.push({
+        message: `Error sintáctico en línea ${tipoSensor.line}: se esperaba un tipo de sensor (como temperatura, bateria, altura, etc.) pero se encontró '${tipoSensor.value}'`,
+        line: tipoSensor.line,
+        col: tipoSensor.col,
+      });
+    }
     consume("KEYWORD", "FRECUENCIA");
     const frecuencia = consume("NUMBER");
     const unidad = parseUnidadOpcional();
