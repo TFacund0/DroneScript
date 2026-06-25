@@ -66,8 +66,15 @@ export class Parser {
       line: tokenActual.line,
       col: tokenActual.col,
     });
-    this.posicionActual++;
-    return tokenActual;
+    // Estrategia de recuperación por inserción virtual:
+    // No incrementamos la posicionActual para que el token real no sea descartado
+    // y pueda ser analizado por la siguiente llamada a consume.
+    return {
+      type: tipoEsperado as any,
+      value: valorEsperado || "",
+      line: tokenActual.line,
+      col: tokenActual.col,
+    };
   }
 
   /**

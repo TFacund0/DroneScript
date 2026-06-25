@@ -13,12 +13,10 @@ const DIR_VECTOR: Record<string, [number, number]> = {
   sur: [0, 1],
   este: [1, 0],
   oeste: [-1, 0],
-  noreste: [0.7, -0.7],
-  noroeste: [-0.7, -0.7],
-  sureste: [0.7, 0.7],
-  suroeste: [-0.7, 0.7],
-  arriba: [0, -1],
-  abajo: [0, 1],
+  noreste: [0.7071, -0.7071],
+  noroeste: [-0.7071, -0.7071],
+  sureste: [0.7071, 0.7071],
+  suroeste: [-0.7071, 0.7071],
 };
 
 type StepKind =
@@ -38,54 +36,109 @@ interface Step {
   dy?: number;
   dist?: number;
   sensor?: string;
+  x: number; // Posición física acumulada en X (metros)
+  y: number; // Posición física acumulada en Y (metros)
+  z: number; // Altitud acumulada en Z (metros)
 }
 
 function interpretAST(ast: ProgramaNode): Step[] {
   const steps: Step[] = [];
+  let cx = 0;
+  let cy = 0;
+  let cz = 0;
 
   function interpCmd(cmd: CmdNode, mision: string): void {
     switch (cmd.type) {
-      case "despegar":
+      case "despegar": {
+        const alt = parseFloat(cmd.altitud) || 0;
+        cz = alt;
         steps.push({
           kind: "despegar",
           label: `DESPEGAR ALTITUD ${cmd.altitud}${cmd.unidad || ""}`,
           mision,
+          x: cx,
+          y: cy,
+          z: cz,
         });
         break;
-      case "mover":
+      }
+      case "mover": {
         if (cmd.modo === "base") {
-          steps.push({ kind: "base", label: "MOVER BASE", mision });
+          cx = 0;
+          cy = 0;
+          // cz se mantiene en la altitud actual al regresar a la base
+          steps.push({
+            kind: "base",
+            label: "MOVER BASE",
+            mision,
+            x: cx,
+            y: cy,
+            z: cz,
+          });
         } else {
-          const [dx, dy] = DIR_VECTOR[cmd.direccion ?? ""] ?? [0, 0];
+          const dir = (cmd.direccion || "").toLowerCase();
+          const dist = parseFloat(cmd.distancia ?? "0") || 0;
+          if (dir === "arriba") {
+            cz += dist;
+          } else if (dir === "abajo") {
+            cz = Math.max(0, cz - dist);
+          } else {
+            const [dx, dy] = DIR_VECTOR[dir] ?? [0, 0];
+            cx += dx * dist;
+            cy += dy * dist;
+          }
+
           steps.push({
             kind: "mover",
-            dx,
-            dy,
-            dist: parseFloat(cmd.distancia ?? "0") || 0,
+            dx: DIR_VECTOR[dir] ? DIR_VECTOR[dir][0] : undefined,
+            dy: DIR_VECTOR[dir] ? DIR_VECTOR[dir][1] : undefined,
+            dist,
             label: `MOVER ${cmd.direccion} ${cmd.distancia}${cmd.unidad || ""}`,
             mision,
+            x: cx,
+            y: cy,
+            z: cz,
           });
         }
         break;
-      case "aterrizar":
-        steps.push({ kind: "aterrizar", label: "ATERRIZAR", mision });
+      }
+      case "aterrizar": {
+        cz = 0;
+        steps.push({
+          kind: "aterrizar",
+          label: "ATERRIZAR",
+          mision,
+          x: cx,
+          y: cy,
+          z: cz,
+        });
         break;
-      case "sensor":
+      }
+      case "sensor": {
         steps.push({
           kind: "sensor",
           sensor: cmd.sensor,
           label: `SENSOR ${cmd.sensor}`,
           mision,
+          x: cx,
+          y: cy,
+          z: cz,
         });
         break;
-      case "condicional":
+      }
+      case "condicional": {
         steps.push({
           kind: "condicional",
           label: `SI ${cmd.variable} ${cmd.op} ${cmd.valor}`,
           mision,
+          x: cx,
+          y: cy,
+          z: cz,
         });
-        interpCmd(cmd.cmd, mision);
+        // No ejecutamos el cuerpo del condicional en la trayectoria de simulación por defecto,
+        // para que no ensucie la ruta nominal del dron (como por ejemplo aterrizajes de emergencia).
         break;
+      }
     }
   }
 
@@ -94,8 +147,13 @@ function interpretAST(ast: ProgramaNode): Step[] {
       kind: "mision",
       label: `MISION ${mision.nombre}`,
       mision: mision.nombre,
+      x: cx,
+      y: cy,
+      z: cz,
     });
-    for (const cmd of mision.bloque?.cmds || []) interpCmd(cmd, mision.nombre);
+    for (const cmd of mision.bloque?.cmds || []) {
+      interpCmd(cmd, mision.nombre);
+    }
   }
   return steps;
 }
@@ -120,6 +178,26 @@ const STEP_ICON: Record<StepKind, string> = {
   mision: "▣",
 };
 
+// Helper para dibujar rectángulos redondeados con compatibilidad hacia atrás
+function drawRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+) {
+  if (r > w / 2) r = w / 2;
+  if (r > h / 2) r = h / 2;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
 interface Props {
   ast: ProgramaNode | null;
   errors: Array<{ message: string; line: number }>;
@@ -130,226 +208,479 @@ export default function DroneVisualizer({ ast, errors }: Props) {
   const [steps, setSteps] = useState<Step[]>([]);
   const [currentStep, setCurrentStep] = useState(-1);
   const [playing, setPlaying] = useState(false);
+  const [isIsometric, setIsIsometric] = useState(true);
+  const [speedMultiplier, setSpeedMultiplier] = useState<0.5 | 1 | 2>(1);
+
+  const dronePosRef = useRef({ x: 0, y: 0, z: 0 });
+  const rotorAngleRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Refs de elementos HUD para actualizaciones rápidas (60fps) sin re-renderizar React
+  const altValRef = useRef<HTMLSpanElement>(null);
+  const xValRef = useRef<HTMLSpanElement>(null);
+  const yValRef = useRef<HTMLSpanElement>(null);
+  const statusValRef = useRef<HTMLSpanElement>(null);
+  const rotorsValRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (!ast || errors?.length > 0) {
       setSteps([]);
       setCurrentStep(-1);
       setPlaying(false);
+      dronePosRef.current = { x: 0, y: 0, z: 0 };
       return;
     }
     setSteps(interpretAST(ast));
     setCurrentStep(-1);
     setPlaying(false);
+    dronePosRef.current = { x: 0, y: 0, z: 0 };
   }, [ast, errors]);
 
+  // Bucle de animación para interpolación suave y renderizado continuo
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-    ctx.fillStyle = "#0d0f14";
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    let animFrameId: number;
 
-    ctx.strokeStyle = "#1a1e28";
-    ctx.lineWidth = 1;
-    for (let x = 0; x < CANVAS_W; x += GRID_SIZE) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, CANVAS_H);
-      ctx.stroke();
-    }
-    for (let y = 0; y < CANVAS_H; y += GRID_SIZE) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(CANVAS_W, y);
-      ctx.stroke();
-    }
+    const update = () => {
+      // 1. Calcular posición destino
+      const target =
+        currentStep >= 0 && steps[currentStep]
+          ? {
+              x: steps[currentStep].x,
+              y: steps[currentStep].y,
+              z: steps[currentStep].z,
+            }
+          : { x: 0, y: 0, z: 0 };
 
-    ctx.strokeStyle = "#252a38";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath();
-    ctx.moveTo(ORIGIN_X, 0);
-    ctx.lineTo(ORIGIN_X, CANVAS_H);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, ORIGIN_Y);
-    ctx.lineTo(CANVAS_W, ORIGIN_Y);
-    ctx.stroke();
-    ctx.setLineDash([]);
+      const dx = target.x - dronePosRef.current.x;
+      const dy = target.y - dronePosRef.current.y;
+      const dz = target.z - dronePosRef.current.z;
 
-    ctx.fillStyle = "#252a38";
-    ctx.font = "bold 11px Space Mono, monospace";
-    ctx.fillText("N", ORIGIN_X + 6, 16);
-    ctx.fillText("S", ORIGIN_X + 6, CANVAS_H - 6);
-    ctx.fillText("E", CANVAS_W - 16, ORIGIN_Y - 6);
-    ctx.fillText("O", 6, ORIGIN_Y - 6);
-
-    ctx.fillStyle = "#00e5a020";
-    ctx.beginPath();
-    ctx.arc(ORIGIN_X, ORIGIN_Y, 14, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#00e5a040";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(ORIGIN_X, ORIGIN_Y, 14, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = "#00e5a0";
-    ctx.font = "bold 10px Space Mono, monospace";
-    ctx.textAlign = "center";
-    ctx.fillText("BASE", ORIGIN_X, ORIGIN_Y + 4);
-    ctx.textAlign = "left";
-
-    let px = ORIGIN_X,
-      py = ORIGIN_Y;
-    const stepsToRender =
-      currentStep >= 0 ? steps.slice(0, currentStep + 1) : [];
-    const path: Array<{ x: number; y: number }> = [{ x: px, y: py }];
-
-    for (const step of stepsToRender) {
-      if (
-        step.kind === "mover" &&
-        step.dx !== undefined &&
-        step.dy !== undefined &&
-        step.dist !== undefined
-      ) {
-        const nx = px + step.dx * step.dist * SCALE;
-        const ny = py + step.dy * step.dist * SCALE;
-        path.push({ x: nx, y: ny });
-        px = nx;
-        py = ny;
-      } else if (step.kind === "base") {
-        path.push({ x: ORIGIN_X, y: ORIGIN_Y });
-        px = ORIGIN_X;
-        py = ORIGIN_Y;
+      // Velocidad de interpolación proporcional a la velocidad de simulación
+      const lerpFactor = Math.min(0.3, 0.08 * speedMultiplier);
+      if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1 && Math.abs(dz) < 0.1) {
+        dronePosRef.current = target;
+      } else {
+        dronePosRef.current.x += dx * lerpFactor;
+        dronePosRef.current.y += dy * lerpFactor;
+        dronePosRef.current.z += dz * lerpFactor;
       }
-    }
 
-    if (path.length > 1) {
-      for (let i = 1; i < path.length; i++) {
-        const from = path[i - 1],
-          to = path[i];
-        ctx.strokeStyle = "#4d9eff44";
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([5, 3]);
+      // Animación de rotación de las hélices
+      if (dronePosRef.current.z > 0.5) {
+        rotorAngleRef.current += 0.25 * speedMultiplier;
+      } else {
+        // Detener hélices alineándolas gradualmente
+        const diff = 0 - (rotorAngleRef.current % (Math.PI * 2));
+        rotorAngleRef.current += diff * 0.1;
+      }
+
+      // 2. Actualizar paneles HUD directamente en el DOM
+      const dronePos = dronePosRef.current;
+      if (altValRef.current) altValRef.current.innerText = `${dronePos.z.toFixed(1)} m`;
+      if (xValRef.current) xValRef.current.innerText = `${dronePos.x.toFixed(1)} m`;
+      // Invertimos Y para que Norte sea positivo visualmente
+      if (yValRef.current) yValRef.current.innerText = `${(-dronePos.y).toFixed(1)} m`;
+
+      let statusStr = "EN TIERRA";
+      let statusColor = "#ff3d5a";
+      let rotorsStr = "APAGADOS";
+      let rotorsColor = "#ff3d5a";
+
+      if (dronePos.z > 0.5) {
+        rotorsStr = "ACTIVOS";
+        rotorsColor = "#00e5a0";
+
+        const dzDiff = target.z - dronePos.z;
+        if (Math.abs(dzDiff) > 1) {
+          statusStr = dzDiff > 0 ? "ASCENDIENDO" : "DESCENDIENDO";
+          statusColor = "#ffd166";
+        } else {
+          statusStr = "EN VUELO";
+          statusColor = "#4d9eff";
+        }
+      } else if (target.z > 0) {
+        statusStr = "INICIANDO";
+        statusColor = "#00e5a0";
+        rotorsStr = "ARRANCANDO";
+        rotorsColor = "#ffd166";
+      }
+
+      if (statusValRef.current) {
+        statusValRef.current.innerText = statusStr;
+        statusValRef.current.style.color = statusColor;
+      }
+      if (rotorsValRef.current) {
+        rotorsValRef.current.innerText = rotorsStr;
+        rotorsValRef.current.style.color = rotorsColor;
+      }
+
+      // 3. Renderizar Canvas
+      ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = "#0a0f1d";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+      // Parámetros de transformación isométrica
+      const SCALE_Z_ISO = 0.7;
+      const SCALE_Z_2D = 0.7;
+      const ISO_SCALE = SCALE * 0.9;
+      const cos30 = Math.cos(Math.PI / 6);
+      const sin30 = Math.sin(Math.PI / 6);
+
+      const project = (px: number, py: number, pz: number) => {
+        if (isIsometric) {
+          return {
+            x: ORIGIN_X + (px - py) * cos30 * ISO_SCALE,
+            y: ORIGIN_Y + (px + py) * sin30 * ISO_SCALE - pz * SCALE_Z_ISO,
+          };
+        } else {
+          return {
+            x: ORIGIN_X + px * SCALE,
+            y: ORIGIN_Y + py * SCALE - pz * SCALE_Z_2D,
+          };
+        }
+      };
+
+      // Dibujar cuadrícula basada en coordenadas físicas
+      const limit = 350;
+      const gridStep = 50;
+      ctx.strokeStyle = "#141923";
+      ctx.lineWidth = 1;
+
+      for (let g = -limit; g <= limit; g += gridStep) {
+        // Línea paralela a eje Y (Y variable, X constante)
+        const p1 = project(g, -limit, 0);
+        const p2 = project(g, limit, 0);
         ctx.beginPath();
-        ctx.moveTo(from.x, from.y);
-        ctx.lineTo(to.x, to.y);
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+
+        // Línea paralela a eje X (X variable, Y constante)
+        const p3 = project(-limit, g, 0);
+        const p4 = project(limit, g, 0);
+        ctx.beginPath();
+        ctx.moveTo(p3.x, p3.y);
+        ctx.lineTo(p4.x, p4.y);
+        ctx.stroke();
+      }
+
+      // Dibujar ejes principales
+      ctx.strokeStyle = "#1f2736";
+      ctx.lineWidth = 1.5;
+      const x1 = project(-limit, 0, 0);
+      const x2 = project(limit, 0, 0);
+      ctx.beginPath();
+      ctx.moveTo(x1.x, x1.y);
+      ctx.lineTo(x2.x, x2.y);
+      ctx.stroke();
+
+      const y1 = project(0, -limit, 0);
+      const y2 = project(0, limit, 0);
+      ctx.beginPath();
+      ctx.moveTo(y1.x, y1.y);
+      ctx.lineTo(y2.x, y2.y);
+      ctx.stroke();
+
+      // Indicaciones de puntos cardinales
+      ctx.fillStyle = "#3e485c";
+      ctx.font = "bold 11px Space Mono, monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const labelOffset = limit + 18;
+      const posN = project(0, -labelOffset, 0);
+      const posS = project(0, labelOffset, 0);
+      const posE = project(labelOffset, 0, 0);
+      const posO = project(-labelOffset, 0, 0);
+      ctx.fillText("N", posN.x, posN.y);
+      ctx.fillText("S", posS.x, posS.y);
+      ctx.fillText("E", posE.x, posE.y);
+      ctx.fillText("O", posO.x, posO.y);
+
+      // Dibujar base
+      const basePos = project(0, 0, 0);
+      ctx.fillStyle = "rgba(0, 229, 160, 0.08)";
+      ctx.strokeStyle = "rgba(0, 229, 160, 0.25)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      if (isIsometric) {
+        ctx.ellipse(basePos.x, basePos.y, 22, 11, 0, 0, Math.PI * 2);
+      } else {
+        ctx.arc(basePos.x, basePos.y, 16, 0, Math.PI * 2);
+      }
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#00e5a0";
+      ctx.font = "bold 9px Space Mono, monospace";
+      ctx.fillText("BASE", basePos.x, basePos.y);
+
+      // Dibujar trayectorias
+      const stepsToRender = currentStep >= 0 ? steps.slice(0, currentStep + 1) : [];
+      const path: Array<{ x: number; y: number; z: number }> = [{ x: 0, y: 0, z: 0 }];
+      for (const step of stepsToRender) {
+        path.push({ x: step.x, y: step.y, z: step.z });
+      }
+
+      // 1. Sombra de la trayectoria en el suelo
+      if (path.length > 1) {
+        ctx.strokeStyle = "rgba(77, 158, 255, 0.12)";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        const pStart = project(path[0].x, path[0].y, 0);
+        ctx.moveTo(pStart.x, pStart.y);
+        for (let i = 1; i < path.length; i++) {
+          const p = project(path[i].x, path[i].y, 0);
+          ctx.lineTo(p.x, p.y);
+        }
         ctx.stroke();
         ctx.setLineDash([]);
-        const angle = Math.atan2(to.y - from.y, to.x - from.x);
-        const mx = (from.x + to.x) / 2,
-          my = (from.y + to.y) / 2;
-        ctx.fillStyle = "#4d9eff";
-        ctx.beginPath();
-        ctx.moveTo(mx + Math.cos(angle) * 7, my + Math.sin(angle) * 7);
-        ctx.lineTo(
-          mx + Math.cos(angle + 2.4) * 5,
-          my + Math.sin(angle + 2.4) * 5,
-        );
-        ctx.lineTo(
-          mx + Math.cos(angle - 2.4) * 5,
-          my + Math.sin(angle - 2.4) * 5,
-        );
-        ctx.closePath();
-        ctx.fill();
       }
-    }
 
-    for (const step of stepsToRender) {
-      if (step.kind === "despegar") {
-        ctx.strokeStyle = "#00e5a040";
-        ctx.lineWidth = 1;
-        for (let r = 10; r <= 25; r += 8) {
-          ctx.beginPath();
-          ctx.arc(px, py, r, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      }
-      if (step.kind === "aterrizar") {
-        ctx.fillStyle = "#ff3d5a22";
+      // 2. Línea de vuelo 3D
+      if (path.length > 1) {
+        ctx.strokeStyle = "rgba(77, 158, 255, 0.65)";
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(px, py, 18, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      if (step.kind === "sensor") {
-        ctx.strokeStyle = "#ffd16644";
-        ctx.lineWidth = 1;
-        for (let r = 15; r <= 35; r += 10) {
-          ctx.beginPath();
-          ctx.arc(px, py, r, 0, Math.PI * 2);
-          ctx.stroke();
+        const pStart = project(path[0].x, path[0].y, path[0].z);
+        ctx.moveTo(pStart.x, pStart.y);
+        for (let i = 1; i < path.length; i++) {
+          const p = project(path[i].x, path[i].y, path[i].z);
+          ctx.lineTo(p.x, p.y);
         }
-      }
-      if (step.kind === "condicional") {
-        ctx.strokeStyle = "#ff6b3544";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(px, py - 16);
-        ctx.lineTo(px + 14, py);
-        ctx.lineTo(px, py + 16);
-        ctx.lineTo(px - 14, py);
-        ctx.closePath();
         ctx.stroke();
-      }
-    }
 
-    if (currentStep >= 0) {
-      ctx.fillStyle = "#00000055";
+        // Flechas de dirección
+        for (let i = 1; i < path.length; i++) {
+          const pFrom = project(path[i - 1].x, path[i - 1].y, path[i - 1].z);
+          const pTo = project(path[i].x, path[i].y, path[i].z);
+          const dist2D = Math.hypot(pTo.x - pFrom.x, pTo.y - pFrom.y);
+          if (dist2D > 18) {
+            const angle = Math.atan2(pTo.y - pFrom.y, pTo.x - pFrom.x);
+            const mx = (pFrom.x + pTo.x) / 2;
+            const my = (pFrom.y + pTo.y) / 2;
+            ctx.fillStyle = "#4d9eff";
+            ctx.beginPath();
+            ctx.moveTo(mx + Math.cos(angle) * 5, my + Math.sin(angle) * 5);
+            ctx.lineTo(mx + Math.cos(angle + 2.4) * 3.5, my + Math.sin(angle + 2.4) * 3.5);
+            ctx.lineTo(mx + Math.cos(angle - 2.4) * 3.5, my + Math.sin(angle - 2.4) * 3.5);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+      }
+
+      // Dibujar marcadores de eventos en el recorrido
+      for (const step of stepsToRender) {
+        const stepGround = project(step.x, step.y, 0);
+        const stepPos = project(step.x, step.y, step.z);
+
+        if (step.kind === "despegar") {
+          ctx.strokeStyle = "rgba(0, 229, 160, 0.4)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (isIsometric) {
+            ctx.ellipse(stepGround.x, stepGround.y, 16, 8, 0, 0, Math.PI * 2);
+          } else {
+            ctx.arc(stepGround.x, stepGround.y, 14, 0, Math.PI * 2);
+          }
+          ctx.stroke();
+        }
+        if (step.kind === "aterrizar") {
+          ctx.fillStyle = "rgba(255, 61, 90, 0.1)";
+          ctx.strokeStyle = "rgba(255, 61, 90, 0.4)";
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          if (isIsometric) {
+            ctx.ellipse(stepGround.x, stepGround.y, 16, 8, 0, 0, Math.PI * 2);
+          } else {
+            ctx.arc(stepGround.x, stepGround.y, 14, 0, Math.PI * 2);
+          }
+          ctx.fill();
+          ctx.stroke();
+        }
+        if (step.kind === "sensor") {
+          ctx.strokeStyle = "rgba(255, 209, 102, 0.35)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (isIsometric) {
+            ctx.ellipse(stepPos.x, stepPos.y, 20, 10, 0, 0, Math.PI * 2);
+          } else {
+            ctx.arc(stepPos.x, stepPos.y, 16, 0, Math.PI * 2);
+          }
+          ctx.stroke();
+        }
+        if (step.kind === "condicional") {
+          ctx.strokeStyle = "rgba(255, 107, 53, 0.45)";
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(stepPos.x, stepPos.y - 10);
+          ctx.lineTo(stepPos.x + 8, stepPos.y);
+          ctx.lineTo(stepPos.x, stepPos.y + 10);
+          ctx.lineTo(stepPos.x - 8, stepPos.y);
+          ctx.closePath();
+          ctx.stroke();
+        }
+      }
+
+      // Dibujar Dron y su Sombra
+      const shadowPos = project(dronePos.x, dronePos.y, 0);
+      const dronePosRender = project(dronePos.x, dronePos.y, dronePos.z);
+
+      // Sombra en el suelo (se difumina y agranda según la altitud)
+      const hFactor = Math.min(1.6, 1 + dronePos.z / 180);
+      const shadowOpacity = Math.max(0.08, 0.42 - dronePos.z / 220);
+      ctx.fillStyle = `rgba(5, 7, 12, ${shadowOpacity})`;
       ctx.beginPath();
-      ctx.ellipse(px + 2, py + 3, 12, 6, 0, 0, Math.PI * 2);
+      if (isIsometric) {
+        ctx.ellipse(shadowPos.x, shadowPos.y, 16 * hFactor, 8 * hFactor, 0, 0, Math.PI * 2);
+      } else {
+        ctx.ellipse(shadowPos.x, shadowPos.y, 14 * hFactor, 7 * hFactor, 0, 0, Math.PI * 2);
+      }
       ctx.fill();
+
+      // Línea vertical indicadora de altitud
+      if (dronePos.z > 1) {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(shadowPos.x, shadowPos.y);
+        ctx.lineTo(dronePosRender.x, dronePosRender.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Etiqueta flotante con altitud
+        ctx.fillStyle = "rgba(10, 15, 25, 0.8)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+        ctx.lineWidth = 1;
+        const tagW = 38;
+        const tagH = 14;
+        const tagX = (shadowPos.x + dronePosRender.x) / 2 + 10;
+        const tagY = (shadowPos.y + dronePosRender.y) / 2 - tagH / 2;
+        
+        drawRoundRect(ctx, tagX, tagY, tagW, tagH, 3);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#8f99ad";
+        ctx.font = "bold 8px Space Mono, monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(`${dronePos.z.toFixed(0)}m`, tagX + tagW / 2, tagY + tagH / 2);
+      }
+
+      // Estructura del Dron (brazos, motores y hélices)
+      const dScale = isIsometric ? 1 : (1 + dronePos.z / 300);
+      const armLen = 11 * dScale;
       const arms: [number, number][] = [
-        [1, 1],
-        [-1, 1],
-        [1, -1],
-        [-1, -1],
+        [1, 1], [-1, 1], [1, -1], [-1, -1]
       ];
-      ctx.strokeStyle = "#252a38";
-      ctx.lineWidth = 2;
+
+      // Brazos diagonales (adaptando la elipse si es isométrica)
+      ctx.strokeStyle = "#1d2330";
+      ctx.lineWidth = 3.5 * dScale;
       for (const [ax, ay] of arms) {
         ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(px + ax * 12, py + ay * 12);
+        ctx.moveTo(dronePosRender.x, dronePosRender.y);
+        ctx.lineTo(dronePosRender.x + ax * armLen, dronePosRender.y + ay * armLen * (isIsometric ? 0.65 : 1));
         ctx.stroke();
       }
-      ctx.fillStyle = "#4d9eff55";
+
+      // Motores / Protectores de rotores
       for (const [ax, ay] of arms) {
+        const mx = dronePosRender.x + ax * armLen;
+        const my = dronePosRender.y + ay * armLen * (isIsometric ? 0.65 : 1);
+        const radius = 5.5 * dScale;
+
+        ctx.fillStyle = "rgba(77, 158, 255, 0.18)";
         ctx.beginPath();
-        ctx.arc(px + ax * 12, py + ay * 12, 7, 0, Math.PI * 2);
+        if (isIsometric) {
+          ctx.ellipse(mx, my, radius, radius * 0.5, 0, 0, Math.PI * 2);
+        } else {
+          ctx.arc(mx, my, radius, 0, Math.PI * 2);
+        }
         ctx.fill();
+
         ctx.strokeStyle = "#4d9eff";
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(px + ax * 12, py + ay * 12, 7, 0, Math.PI * 2);
+        if (isIsometric) {
+          ctx.ellipse(mx, my, radius, radius * 0.5, 0, 0, Math.PI * 2);
+        } else {
+          ctx.arc(mx, my, radius, 0, Math.PI * 2);
+        }
         ctx.stroke();
       }
-      ctx.fillStyle = "#13161e";
+
+      // Hélices en movimiento
+      const bAngle = rotorAngleRef.current;
+      const bladeLen = 6 * dScale;
+      ctx.strokeStyle = "rgba(224, 231, 255, 0.75)";
+      ctx.lineWidth = 1.2;
+      for (const [ax, ay] of arms) {
+        const mx = dronePosRender.x + ax * armLen;
+        const my = dronePosRender.y + ay * armLen * (isIsometric ? 0.65 : 1);
+
+        // Aspa 1
+        ctx.beginPath();
+        ctx.moveTo(mx - Math.cos(bAngle) * bladeLen, my - Math.sin(bAngle) * bladeLen * (isIsometric ? 0.5 : 1));
+        ctx.lineTo(mx + Math.cos(bAngle) * bladeLen, my + Math.sin(bAngle) * bladeLen * (isIsometric ? 0.5 : 1));
+        ctx.stroke();
+
+        // Aspa 2
+        ctx.beginPath();
+        ctx.moveTo(mx - Math.cos(bAngle + Math.PI / 2) * bladeLen, my - Math.sin(bAngle + Math.PI / 2) * bladeLen * (isIsometric ? 0.5 : 1));
+        ctx.lineTo(mx + Math.cos(bAngle + Math.PI / 2) * bladeLen, my + Math.sin(bAngle + Math.PI / 2) * bladeLen * (isIsometric ? 0.5 : 1));
+        ctx.stroke();
+      }
+
+      // Cuerpo Central (Fusible)
+      const bodyRad = 8.5 * dScale;
+      ctx.fillStyle = "#161b26";
       ctx.beginPath();
-      ctx.arc(px, py, 9, 0, Math.PI * 2);
+      if (isIsometric) {
+        ctx.ellipse(dronePosRender.x, dronePosRender.y, bodyRad, bodyRad * 0.65, 0, 0, Math.PI * 2);
+      } else {
+        ctx.arc(dronePosRender.x, dronePosRender.y, bodyRad, 0, Math.PI * 2);
+      }
       ctx.fill();
+
       ctx.strokeStyle = "#00e5a0";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(px, py, 9, 0, Math.PI * 2);
+      if (isIsometric) {
+        ctx.ellipse(dronePosRender.x, dronePosRender.y, bodyRad, bodyRad * 0.65, 0, 0, Math.PI * 2);
+      } else {
+        ctx.arc(dronePosRender.x, dronePosRender.y, bodyRad, 0, Math.PI * 2);
+      }
       ctx.stroke();
-      ctx.fillStyle = "#00e5a0";
-      ctx.beginPath();
-      ctx.arc(px, py, 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#00e5a066";
-      ctx.beginPath();
-      ctx.arc(px, py, 6, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }, [steps, currentStep]);
 
+      // LED de estado central parpadeante
+      const pulse = (Math.sin(Date.now() / 150) + 1) / 2;
+      const ledColor = dronePos.z > 0.5
+        ? `rgba(0, 229, 160, ${0.4 + pulse * 0.6})`
+        : "rgba(255, 61, 90, 0.8)";
+      ctx.fillStyle = ledColor;
+      ctx.beginPath();
+      ctx.arc(dronePosRender.x, dronePosRender.y, 3 * dScale, 0, Math.PI * 2);
+      ctx.fill();
+
+      animFrameId = requestAnimationFrame(update);
+    };
+
+    animFrameId = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(animFrameId);
+  }, [steps, currentStep, isIsometric, speedMultiplier]);
+
+  // Manejo del control automático del paso a paso
   useEffect(() => {
     if (playing) {
+      const intervalTime = 700 / speedMultiplier;
       intervalRef.current = setInterval(() => {
         setCurrentStep((prev) => {
           if (prev >= steps.length - 1) {
@@ -359,14 +690,14 @@ export default function DroneVisualizer({ ast, errors }: Props) {
           }
           return prev + 1;
         });
-      }, 700);
+      }, intervalTime);
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [playing, steps]);
+  }, [playing, steps, speedMultiplier]);
 
   const hasErrors = errors?.length > 0;
   const noSteps = steps.length === 0;
@@ -414,6 +745,126 @@ export default function DroneVisualizer({ ast, errors }: Props) {
           height={CANVAS_H}
           style={{ display: "block", maxWidth: "100%", maxHeight: "100%" }}
         />
+
+        {/* HUD de Telemetría (Esquina superior izquierda) */}
+        {!noSteps && !hasErrors && (
+          <div
+            style={{
+              position: "absolute",
+              top: 12,
+              left: 12,
+              background: "rgba(10, 15, 30, 0.75)",
+              backdropFilter: "blur(6px)",
+              border: "1px solid rgba(77, 158, 255, 0.2)",
+              borderRadius: 6,
+              padding: "10px 14px",
+              ...mono,
+              fontSize: 10,
+              color: "#8f99ad",
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+              pointerEvents: "none",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+            }}
+          >
+            <div style={{ color: "#4d9eff", fontWeight: "bold", fontSize: 11, marginBottom: 2 }}>
+              TELEMETRÍA DRON
+            </div>
+            <div>
+              ALTITUD: <span ref={altValRef} style={{ color: "#e8ecf5", fontWeight: "bold" }}>0.0 m</span>
+            </div>
+            <div>
+              COORD X: <span ref={xValRef} style={{ color: "#e8ecf5", fontWeight: "bold" }}>0.0 m</span>
+            </div>
+            <div>
+              COORD Y: <span ref={yValRef} style={{ color: "#e8ecf5", fontWeight: "bold" }}>0.0 m</span>
+            </div>
+          </div>
+        )}
+
+        {/* HUD de Estado de Motores (Esquina superior derecha) */}
+        {!noSteps && !hasErrors && (
+          <div
+            style={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              background: "rgba(10, 15, 30, 0.75)",
+              backdropFilter: "blur(6px)",
+              border: "1px solid rgba(77, 158, 255, 0.2)",
+              borderRadius: 6,
+              padding: "10px 14px",
+              ...mono,
+              fontSize: 10,
+              color: "#8f99ad",
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+              pointerEvents: "none",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+            }}
+          >
+            <div style={{ color: "#4d9eff", fontWeight: "bold", fontSize: 11, marginBottom: 2 }}>
+              SISTEMA DE MOTORES
+            </div>
+            <div>
+              ESTADO: <span ref={statusValRef} style={{ color: "#ff3d5a", fontWeight: "bold" }}>EN TIERRA</span>
+            </div>
+            <div>
+              ROTORES: <span ref={rotorsValRef} style={{ color: "#ff3d5a", fontWeight: "bold" }}>APAGADOS</span>
+            </div>
+          </div>
+        )}
+
+        {/* HUD de Selección de Vista (Esquina inferior derecha) */}
+        {!noSteps && !hasErrors && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 12,
+              right: 12,
+              display: "flex",
+              gap: 6,
+            }}
+          >
+            <button
+              onClick={() => setIsIsometric(false)}
+              style={{
+                background: !isIsometric ? "#4d9eff" : "rgba(16, 22, 35, 0.8)",
+                color: !isIsometric ? "#0d0f14" : "#8f99ad",
+                border: "1px solid rgba(77, 158, 255, 0.3)",
+                borderRadius: 4,
+                padding: "5px 12px",
+                fontSize: 10,
+                cursor: "pointer",
+                fontWeight: "bold",
+                ...mono,
+                transition: "all 0.15s",
+              }}
+            >
+              VISTA 2D
+            </button>
+            <button
+              onClick={() => setIsIsometric(true)}
+              style={{
+                background: isIsometric ? "#4d9eff" : "rgba(16, 22, 35, 0.8)",
+                color: isIsometric ? "#0d0f14" : "#8f99ad",
+                border: "1px solid rgba(77, 158, 255, 0.3)",
+                borderRadius: 4,
+                padding: "5px 12px",
+                fontSize: 10,
+                cursor: "pointer",
+                fontWeight: "bold",
+                ...mono,
+                transition: "all 0.15s",
+              }}
+            >
+              ISOMÉTRICA 3D
+            </button>
+          </div>
+        )}
+
         {(hasErrors || noSteps) && (
           <div
             style={{
@@ -507,18 +958,22 @@ export default function DroneVisualizer({ ast, errors }: Props) {
               </span>
             </div>
           )}
-          <div style={{ display: "flex", gap: 6 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <button
               onClick={() => {
                 setPlaying(false);
                 setCurrentStep(-1);
+                dronePosRef.current = { x: 0, y: 0, z: 0 };
               }}
               style={btnStyle("#1a1e28", "#6b7280")}
             >
               ↩ Reset
             </button>
             <button
-              onClick={() => setCurrentStep((p) => Math.max(-1, p - 1))}
+              onClick={() => {
+                setPlaying(false);
+                setCurrentStep((p) => Math.max(-1, p - 1));
+              }}
               disabled={currentStep < 0}
               style={btnStyle("#1a1e28", "#4d9eff", currentStep < 0)}
             >
@@ -547,6 +1002,32 @@ export default function DroneVisualizer({ ast, errors }: Props) {
             >
               ▶
             </button>
+
+            {/* Separador vertical y botones de velocidad */}
+            <div style={{ width: 1, background: "#252a38", margin: "0 6px" }} />
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <span style={{ color: "#6b7280", fontSize: 11, marginRight: 4, ...mono }}>Velocidad:</span>
+              {([0.5, 1, 2] as const).map((spd) => (
+                <button
+                  key={spd}
+                  onClick={() => setSpeedMultiplier(spd)}
+                  style={{
+                    background: speedMultiplier === spd ? "rgba(77, 158, 255, 0.15)" : "#1a1e28",
+                    color: speedMultiplier === spd ? "#4d9eff" : "#6b7280",
+                    border: `1px solid ${speedMultiplier === spd ? "#4d9eff" : "#252a38"}`,
+                    padding: "4px 8px",
+                    borderRadius: 3,
+                    cursor: "pointer",
+                    fontSize: 10,
+                    fontWeight: "bold",
+                    ...mono,
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {spd}x
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
