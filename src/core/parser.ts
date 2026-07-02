@@ -22,6 +22,7 @@ export class Parser {
   private listaTokens: Token[];
   private posicionActual = 0;
   private errores: ParseError[] = [];
+  private ultimoTokenConsumido: Token | null = null;
 
   constructor(tokens: Token[]) {
     this.listaTokens = tokens;
@@ -55,25 +56,38 @@ export class Parser {
       (valorEsperado === null || tokenActual.value === valorEsperado)
     ) {
       this.posicionActual++;
+      this.ultimoTokenConsumido = tokenActual;
       return tokenActual;
     }
     const esperado = valorEsperado ? `'${valorEsperado}'` : tipoEsperado;
     const encontrado = tokenActual.value
       ? `'${tokenActual.value}'`
       : tokenActual.type;
+
+    // Si el token actual está en una línea posterior o es EOF,
+    // probablemente el token esperado faltó en la línea del último token consumido.
+    const errorLine = (this.ultimoTokenConsumido && (tokenActual.line > this.ultimoTokenConsumido.line || tokenActual.type === "EOF"))
+      ? this.ultimoTokenConsumido.line
+      : tokenActual.line;
+
+    const errorCol = (this.ultimoTokenConsumido && (tokenActual.line > this.ultimoTokenConsumido.line || tokenActual.type === "EOF"))
+      ? this.ultimoTokenConsumido.col + (this.ultimoTokenConsumido.value?.length || 0)
+      : tokenActual.col;
+
     this.errores.push({
-      message: `Error sintáctico en línea ${tokenActual.line}: se esperaba ${esperado} pero se encontró ${encontrado}`,
-      line: tokenActual.line,
-      col: tokenActual.col,
+      message: `Error sintáctico en línea ${errorLine}: se esperaba ${esperado} pero se encontró ${encontrado}`,
+      line: errorLine,
+      col: errorCol,
     });
+
     // Estrategia de recuperación por inserción virtual:
     // No incrementamos la posicionActual para que el token real no sea descartado
     // y pueda ser analizado por la siguiente llamada a consume.
     return {
       type: tipoEsperado as any,
       value: valorEsperado || "",
-      line: tokenActual.line,
-      col: tokenActual.col,
+      line: errorLine,
+      col: errorCol,
     };
   }
 
@@ -92,6 +106,7 @@ export class Parser {
   public parse(): ParseResult {
     this.posicionActual = 0;
     this.errores = [];
+    this.ultimoTokenConsumido = null;
     const ast = this.parsePrograma();
     return { ast, errors: this.errores };
   }
@@ -148,11 +163,8 @@ export class Parser {
   private parseBloque(): BloqueNode {
     const comandos: CmdNode[] = [];
     while (
-      this.isKeyword("DESPEGAR") ||
-      this.isKeyword("MOVER") ||
-      this.isKeyword("ATERRIZAR") ||
-      this.isKeyword("SENSOR") ||
-      this.isKeyword("SI")
+      !this.isKeyword("FIN") &&
+      this.peek().type !== "EOF"
     ) {
       comandos.push(this.parseCmd());
     }

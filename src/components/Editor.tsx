@@ -6,6 +6,7 @@ const EXAMPLE_LABELS = [
   { key: "valid1", label: "✓ simple" },
   { key: "valid2", label: "✓ complejo" },
   { key: "valid3", label: "✓ reconocimiento" },
+  { key: "messi", label: "✓ escribir messi" },
   { key: "invalid1", label: "✗ sin número" },
   { key: "invalid2", label: "✗ falta FIN" },
   { key: "invalid3", label: "✗ cmd inválido" },
