@@ -92,11 +92,17 @@ export default function TokenPanel({ result }: Props) {
             >
               {tok.type}
             </span>
-            <span style={{ color: "var(--text-main)", opacity: 0.85, fontSize: 12 }}>
+            <span
+              style={{ color: "var(--text-main)", opacity: 0.85, fontSize: 12 }}
+            >
               {tok.value}
             </span>
             <span
-              style={{ color: "var(--text-muted)", textAlign: "right", fontSize: 10 }}
+              style={{
+                color: "var(--text-muted)",
+                textAlign: "right",
+                fontSize: 10,
+              }}
             >
               línea {tok.line}
             </span>

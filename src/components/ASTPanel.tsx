@@ -143,7 +143,9 @@ function ASTNodeComp({
         )}
         {label}
         {line && (
-          <span style={{ color: "var(--text-muted)", fontSize: 10, marginLeft: 4 }}>
+          <span
+            style={{ color: "var(--text-muted)", fontSize: 10, marginLeft: 4 }}
+          >
             :{line}
           </span>
         )}

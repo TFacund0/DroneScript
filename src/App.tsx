@@ -83,7 +83,13 @@ export default function App() {
           overflow: "hidden",
         }}
       >
-        <Editor code={code} setCode={setCode} onAnalyze={analyze} isDark={isDark} />
+        <Editor
+          code={code}
+          setCode={setCode}
+          onAnalyze={analyze}
+          isDark={isDark}
+          errors={result?.errors ?? []}
+        />
 
         <div
           style={{
@@ -110,7 +116,8 @@ export default function App() {
                   fontFamily: "'Space Mono', monospace",
                   letterSpacing: 1,
                   textTransform: "uppercase",
-                  color: tab === t.id ? "#00e5a0" : (isDark ? "#6b7280" : "#475569"),
+                  color:
+                    tab === t.id ? "#00e5a0" : isDark ? "#6b7280" : "#475569",
                   background: "transparent",
                   border: "none",
                   borderBottom:
@@ -133,7 +140,12 @@ export default function App() {
               minHeight: 0,
               overflow: tab === "simulacion" ? "hidden" : "auto",
               padding: tab === "simulacion" ? 0 : 14,
-              background: tab === "simulacion" ? "#0a0f1e" : (isDark ? "#0d0f14" : "#ffffff"),
+              background:
+                tab === "simulacion"
+                  ? "#0a0f1e"
+                  : isDark
+                    ? "#0d0f14"
+                    : "#ffffff",
               fontFamily: "'Space Mono', monospace",
               fontSize: 12,
               lineHeight: 1.7,
@@ -181,7 +193,9 @@ export default function App() {
             }}
           >
             {!result && (
-              <span style={{ color: isDark ? "#6b7280" : "#475569" }}>— listo para analizar</span>
+              <span style={{ color: isDark ? "#6b7280" : "#475569" }}>
+                — listo para analizar
+              </span>
             )}
             {result && isValid && (
               <>

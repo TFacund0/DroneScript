@@ -47,8 +47,12 @@ export default function Header({ isDark, toggleTheme }: Props) {
           (e.target as HTMLButtonElement).style.color = "#00e5a0";
         }}
         onMouseLeave={(e) => {
-          (e.target as HTMLButtonElement).style.borderColor = isDark ? "#252a38" : "#cbd5e1";
-          (e.target as HTMLButtonElement).style.color = isDark ? "#6b7280" : "#475569";
+          (e.target as HTMLButtonElement).style.borderColor = isDark
+            ? "#252a38"
+            : "#cbd5e1";
+          (e.target as HTMLButtonElement).style.color = isDark
+            ? "#6b7280"
+            : "#475569";
         }}
       >
         {isDark ? "☀️ CLARO" : "🌙 OSCURO"}

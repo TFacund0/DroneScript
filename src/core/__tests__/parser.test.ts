@@ -1,6 +1,6 @@
 /**
  * Pruebas unitarias para el analizador sintáctico (Parser).
- * 
+ *
  * Para ejecutar estas pruebas unitarias:
  * - Ejecución única: pnpm test
  * - Modo interactivo de desarrollo: pnpm test:watch
@@ -9,7 +9,13 @@
 import { describe, it, expect } from "vitest";
 import { tokenize } from "../lexer";
 import { parse } from "../parser";
-import type { DespecarNode, MoverNode, AterrizarNode, SensorNode, CondicionalNode } from "../../types";
+import type {
+  DespegarNode,
+  MoverNode,
+  AterrizarNode,
+  SensorNode,
+  CondicionalNode,
+} from "../../types";
 
 describe("DroneScript Parser", () => {
   it("debe parsear un programa básico válido", () => {
@@ -33,9 +39,9 @@ describe("DroneScript Parser", () => {
     const cmds = mision.bloque.cmds;
     expect(cmds).toHaveLength(2);
 
-    const cmdDespegar = cmds[0] as DespecarNode;
+    const cmdDespegar = cmds[0] as DespegarNode;
     expect(cmdDespegar.type).toBe("despegar");
-    expect(cmdDespegar.altitud).toBe("50");
+    expect(cmdDespegar.altitud).toBe(50);
     expect(cmdDespegar.unidad).toBe("m");
 
     const cmdAterrizar = cmds[1] as AterrizarNode;
@@ -64,16 +70,16 @@ describe("DroneScript Parser", () => {
     expect(cmd1.type).toBe("mover");
     expect(cmd1.modo).toBe("direccion");
     expect(cmd1.direccion).toBe("norte");
-    expect(cmd1.distancia).toBe("100");
+    expect(cmd1.distancia).toBe(100);
     expect(cmd1.unidad).toBe("m");
-    expect(cmd1.velocidad).toBe("10");
+    expect(cmd1.velocidad).toBe(10);
 
     // MOVER sur 50 m
     const cmd2 = cmds[1] as MoverNode;
     expect(cmd2.type).toBe("mover");
     expect(cmd2.modo).toBe("direccion");
     expect(cmd2.direccion).toBe("sur");
-    expect(cmd2.distancia).toBe("50");
+    expect(cmd2.distancia).toBe(50);
     expect(cmd2.unidad).toBe("m");
     expect(cmd2.velocidad).toBeNull();
 
@@ -82,16 +88,16 @@ describe("DroneScript Parser", () => {
     expect(cmd3.type).toBe("mover");
     expect(cmd3.modo).toBe("direccion");
     expect(cmd3.direccion).toBe("este");
-    expect(cmd3.distancia).toBe("80");
+    expect(cmd3.distancia).toBe(80);
     expect(cmd3.unidad).toBeNull();
-    expect(cmd3.velocidad).toBe("5");
+    expect(cmd3.velocidad).toBe(5);
 
     // MOVER oeste 30
     const cmd4 = cmds[3] as MoverNode;
     expect(cmd4.type).toBe("mover");
     expect(cmd4.modo).toBe("direccion");
     expect(cmd4.direccion).toBe("oeste");
-    expect(cmd4.distancia).toBe("30");
+    expect(cmd4.distancia).toBe(30);
     expect(cmd4.unidad).toBeNull();
     expect(cmd4.velocidad).toBeNull();
 
@@ -121,7 +127,7 @@ describe("DroneScript Parser", () => {
     const cmdSensor = cmds[0] as SensorNode;
     expect(cmdSensor.type).toBe("sensor");
     expect(cmdSensor.sensor).toBe("temperatura");
-    expect(cmdSensor.frecuencia).toBe("5");
+    expect(cmdSensor.frecuencia).toBe(5);
     expect(cmdSensor.unidad).toBe("s");
 
     // SI bateria < 20 ENTONCES ATERRIZAR FIN
@@ -129,7 +135,7 @@ describe("DroneScript Parser", () => {
     expect(cmdSi.type).toBe("condicional");
     expect(cmdSi.variable).toBe("bateria");
     expect(cmdSi.op).toBe("<");
-    expect(cmdSi.valor).toBe("20");
+    expect(cmdSi.valor).toBe(20);
     expect(cmdSi.cmd.type).toBe("aterrizar");
   });
 
@@ -143,7 +149,9 @@ describe("DroneScript Parser", () => {
     const { errors } = parse(tokens);
 
     expect(errors.length).toBeGreaterThan(0);
-    expect(errors[0].message).toContain("se esperaba el inicio de una misión ('MISION')");
+    expect(errors[0].message).toContain(
+      "se esperaba el inicio de una misión ('MISION')",
+    );
   });
 
   it("debe capturar errores cuando falta el nombre de la misión", () => {
@@ -168,7 +176,9 @@ describe("DroneScript Parser", () => {
     const { errors } = parse(tokens);
 
     expect(errors.length).toBeGreaterThan(0);
-    expect(errors.some(err => err.message.includes("se esperaba 'FIN'"))).toBe(true);
+    expect(
+      errors.some((err) => err.message.includes("se esperaba 'FIN'")),
+    ).toBe(true);
   });
 
   it("debe capturar errores cuando la dirección del movimiento es inválida", () => {
@@ -181,7 +191,9 @@ describe("DroneScript Parser", () => {
     const { errors } = parse(tokens);
 
     expect(errors.length).toBeGreaterThan(0);
-    expect(errors[0].message).toContain("se esperaba una dirección (como norte, sur, este, oeste, etc.)");
+    expect(errors[0].message).toContain(
+      "se esperaba una dirección (como norte, sur, este, oeste, etc.)",
+    );
   });
 
   it("debe capturar errores cuando el tipo de sensor es inválido", () => {
@@ -194,7 +206,9 @@ describe("DroneScript Parser", () => {
     const { errors } = parse(tokens);
 
     expect(errors.length).toBeGreaterThan(0);
-    expect(errors[0].message).toContain("se esperaba un tipo de sensor (como temperatura, bateria, altura, etc.)");
+    expect(errors[0].message).toContain(
+      "se esperaba un tipo de sensor (como temperatura, bateria, altura, etc.)",
+    );
   });
 
   it("debe capturar errores de comandos no reconocidos e insertar un nodo error", () => {

@@ -1,4 +1,4 @@
-##Conjuntos FIRST y FOLLOW
+## Conjuntos FIRST y FOLLOW
 Para demostrar formalmente que la gramática de DroneScript es LL(1), se calcularon los conjuntos FIRST y FOLLOW de cada no-terminal. Estos conjuntos son la base teórica que garantiza que el parser descendente recursivo implementado puede tomar decisiones de derivación unívocas con un único token de anticipación (lookahead de 1).
 
 **FIRST(X)**: conjunto de terminales con los que puede comenzar cualquier cadena derivada del símbolo X. Si X puede derivar la cadena vacía (λ), entonces λ también pertenece a FIRST(X).

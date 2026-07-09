@@ -1,6 +1,6 @@
 /**
  * Pruebas unitarias para el analizador léxico (Lexer).
- * 
+ *
  * Para ejecutar estas pruebas unitarias:
  * - Ejecución única: pnpm test
  * - Modo interactivo de desarrollo: pnpm test:watch
@@ -11,7 +11,8 @@ import { tokenize } from "../lexer";
 
 describe("DroneScript Lexer", () => {
   it("debe tokenizar palabras clave (keywords) en mayúsculas", () => {
-    const input = "MISION FIN DESPEGAR ALTITUD MOVER ATERRIZAR SENSOR FRECUENCIA SI ENTONCES BASE VELOCIDAD";
+    const input =
+      "MISION FIN DESPEGAR ALTITUD MOVER ATERRIZAR SENSOR FRECUENCIA SI ENTONCES BASE VELOCIDAD";
     const { tokens, errors } = tokenize(input);
 
     expect(errors).toHaveLength(0);
@@ -49,7 +50,14 @@ describe("DroneScript Lexer", () => {
     expect(errors).toHaveLength(0);
     expect(tokens).toHaveLength(7); // 6 direcciones + 1 EOF
 
-    const expectedDirections = ["norte", "sur", "este", "oeste", "arriba", "abajo"];
+    const expectedDirections = [
+      "norte",
+      "sur",
+      "este",
+      "oeste",
+      "arriba",
+      "abajo",
+    ];
     expectedDirections.forEach((dir, index) => {
       expect(tokens[index].type).toBe("IDENT");
       expect(tokens[index].subtype).toBe("direccion");
@@ -64,7 +72,13 @@ describe("DroneScript Lexer", () => {
     expect(errors).toHaveLength(0);
     expect(tokens).toHaveLength(6); // 5 sensores + 1 EOF
 
-    const expectedSensors = ["temperatura", "bateria", "altura", "velocidad", "viento"];
+    const expectedSensors = [
+      "temperatura",
+      "bateria",
+      "altura",
+      "velocidad",
+      "viento",
+    ];
     expectedSensors.forEach((sensor, index) => {
       expect(tokens[index].type).toBe("IDENT");
       expect(tokens[index].subtype).toBe("sensor");
@@ -118,10 +132,18 @@ describe("DroneScript Lexer", () => {
     expect(errors).toHaveLength(0);
     expect(tokens).toHaveLength(5); // 4 unidades + 1 EOF
 
-    expect(tokens[0]).toEqual(expect.objectContaining({ type: "UNIT", value: "m" }));
-    expect(tokens[1]).toEqual(expect.objectContaining({ type: "UNIT", value: "km" }));
-    expect(tokens[2]).toEqual(expect.objectContaining({ type: "UNIT", value: "s" }));
-    expect(tokens[3]).toEqual(expect.objectContaining({ type: "UNIT", value: "%" }));
+    expect(tokens[0]).toEqual(
+      expect.objectContaining({ type: "UNIT", value: "m" }),
+    );
+    expect(tokens[1]).toEqual(
+      expect.objectContaining({ type: "UNIT", value: "km" }),
+    );
+    expect(tokens[2]).toEqual(
+      expect.objectContaining({ type: "UNIT", value: "s" }),
+    );
+    expect(tokens[3]).toEqual(
+      expect.objectContaining({ type: "UNIT", value: "%" }),
+    );
   });
 
   it("debe tokenizar operadores de comparación", () => {
@@ -137,7 +159,7 @@ describe("DroneScript Lexer", () => {
         expect.objectContaining({
           type: "OP",
           value: op,
-        })
+        }),
       );
     });
   });
@@ -153,17 +175,47 @@ FIN`;
     expect(tokens).toHaveLength(8);
 
     // MISION "vuelo" (línea 1)
-    expect(tokens[0]).toEqual({ type: "KEYWORD", value: "MISION", line: 1, col: 1 });
-    expect(tokens[1]).toEqual({ type: "STRING", value: '"vuelo"', line: 1, col: 8 });
+    expect(tokens[0]).toEqual({
+      type: "KEYWORD",
+      value: "MISION",
+      line: 1,
+      col: 1,
+    });
+    expect(tokens[1]).toEqual({
+      type: "STRING",
+      value: '"vuelo"',
+      line: 1,
+      col: 8,
+    });
 
     // DESPEGAR ALTITUD 50 m (línea 2, con 2 espacios iniciales de sangría)
-    expect(tokens[2]).toEqual({ type: "KEYWORD", value: "DESPEGAR", line: 2, col: 3 });
-    expect(tokens[3]).toEqual({ type: "KEYWORD", value: "ALTITUD", line: 2, col: 12 });
-    expect(tokens[4]).toEqual({ type: "NUMBER", value: "50", line: 2, col: 20 });
+    expect(tokens[2]).toEqual({
+      type: "KEYWORD",
+      value: "DESPEGAR",
+      line: 2,
+      col: 3,
+    });
+    expect(tokens[3]).toEqual({
+      type: "KEYWORD",
+      value: "ALTITUD",
+      line: 2,
+      col: 12,
+    });
+    expect(tokens[4]).toEqual({
+      type: "NUMBER",
+      value: "50",
+      line: 2,
+      col: 20,
+    });
     expect(tokens[5]).toEqual({ type: "UNIT", value: "m", line: 2, col: 23 });
 
     // FIN (línea 3)
-    expect(tokens[6]).toEqual({ type: "KEYWORD", value: "FIN", line: 3, col: 1 });
+    expect(tokens[6]).toEqual({
+      type: "KEYWORD",
+      value: "FIN",
+      line: 3,
+      col: 1,
+    });
   });
 
   it("debe registrar errores léxicos para caracteres no reconocidos", () => {

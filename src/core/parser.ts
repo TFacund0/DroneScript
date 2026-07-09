@@ -7,7 +7,7 @@ import type {
   MisionNode,
   BloqueNode,
   CmdNode,
-  DespecarNode,
+  DespegarNode,
   MoverNode,
   AterrizarNode,
   SensorNode,
@@ -67,13 +67,20 @@ export class Parser {
 
     // Si el token actual está en una línea posterior o es EOF,
     // probablemente el token esperado faltó en la línea del último token consumido.
-    const errorLine = (this.ultimoTokenConsumido && (tokenActual.line > this.ultimoTokenConsumido.line || tokenActual.type === "EOF"))
-      ? this.ultimoTokenConsumido.line
-      : tokenActual.line;
+    const errorLine =
+      this.ultimoTokenConsumido &&
+      (tokenActual.line > this.ultimoTokenConsumido.line ||
+        tokenActual.type === "EOF")
+        ? this.ultimoTokenConsumido.line
+        : tokenActual.line;
 
-    const errorCol = (this.ultimoTokenConsumido && (tokenActual.line > this.ultimoTokenConsumido.line || tokenActual.type === "EOF"))
-      ? this.ultimoTokenConsumido.col + (this.ultimoTokenConsumido.value?.length || 0)
-      : tokenActual.col;
+    const errorCol =
+      this.ultimoTokenConsumido &&
+      (tokenActual.line > this.ultimoTokenConsumido.line ||
+        tokenActual.type === "EOF")
+        ? this.ultimoTokenConsumido.col +
+          (this.ultimoTokenConsumido.value?.length || 0)
+        : tokenActual.col;
 
     this.errores.push({
       message: `Error sintáctico en línea ${errorLine}: se esperaba ${esperado} pero se encontró ${encontrado}`,
@@ -163,10 +170,7 @@ export class Parser {
    */
   private parseBloque(): BloqueNode {
     const comandos: CmdNode[] = [];
-    while (
-      !this.isKeyword("FIN") &&
-      this.peek().type !== "EOF"
-    ) {
+    while (!this.isKeyword("FIN") && this.peek().type !== "EOF") {
       comandos.push(this.parseCmd());
     }
     return { type: "bloque", cmds: comandos };
@@ -197,14 +201,14 @@ export class Parser {
    * Regla: despegar → DESPEGAR ALTITUD NUMBER unidad_opcional
    * Parsea la instrucción para elevar el dron.
    */
-  private parseDespegar(): DespecarNode {
+  private parseDespegar(): DespegarNode {
     const tokenDespegar = this.consume("KEYWORD", "DESPEGAR");
     this.consume("KEYWORD", "ALTITUD");
     const tokenNumero = this.consume("NUMBER");
     const unidadOpcional = this.parseUnidadOpcional();
     return {
       type: "despegar",
-      altitud: tokenNumero.value,
+      altitud: Number(tokenNumero.value),
       unidad: unidadOpcional,
       line: tokenDespegar.line,
     };
@@ -239,7 +243,7 @@ export class Parser {
       type: "mover",
       modo: "direccion",
       direccion: tokenDireccion.value,
-      distancia: tokenDistancia.value,
+      distancia: Number(tokenDistancia.value),
       unidad: unidadOpcional,
       velocidad: velocidadOpcional,
       line: tokenMover.line,
@@ -278,7 +282,7 @@ export class Parser {
     return {
       type: "sensor",
       sensor: tokenTipoSensor.value,
-      frecuencia: tokenFrecuencia.value,
+      frecuencia: Number(tokenFrecuencia.value),
       unidad: unidadOpcional,
       line: tokenSensor.line,
     };
@@ -300,7 +304,7 @@ export class Parser {
       type: "condicional",
       variable: tokenVariable.value,
       op: tokenOperador.value,
-      valor: tokenValor.value,
+      valor: Number(tokenValor.value),
       cmd: comandoCondicional,
       line: tokenSi.line,
     };
@@ -319,10 +323,10 @@ export class Parser {
    * Regla: velocidad_opcional → VELOCIDAD NUMBER | λ
    * Obtiene el valor opcional de velocidad.
    */
-  private parseVelocidadOpcional(): string | null {
+  private parseVelocidadOpcional(): number | null {
     if (this.isKeyword("VELOCIDAD")) {
       this.consume("KEYWORD", "VELOCIDAD");
-      return this.consume("NUMBER").value;
+      return Number(this.consume("NUMBER").value);
     }
     return null;
   }

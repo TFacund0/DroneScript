@@ -3,13 +3,7 @@
 // ── Lexer ────────────────────────────────────────────────────────────────────
 
 export type TokenType =
-  | "KEYWORD"
-  | "STRING"
-  | "NUMBER"
-  | "UNIT"
-  | "IDENT"
-  | "OP"
-  | "EOF";
+  "KEYWORD" | "STRING" | "NUMBER" | "UNIT" | "IDENT" | "OP" | "EOF";
 
 export interface Token {
   type: TokenType;
@@ -50,16 +44,16 @@ export interface BloqueNode {
 }
 
 export type CmdNode =
-  | DespecarNode
+  | DespegarNode
   | MoverNode
   | AterrizarNode
   | SensorNode
   | CondicionalNode
   | ErrorNode;
 
-export interface DespecarNode {
+export interface DespegarNode {
   type: "despegar";
-  altitud: string;
+  altitud: number;
   unidad: string | null;
   line: number;
 }
@@ -68,9 +62,9 @@ export interface MoverNode {
   type: "mover";
   modo: "base" | "direccion";
   direccion?: string;
-  distancia?: string;
+  distancia?: number;
   unidad?: string | null;
-  velocidad?: string | null;
+  velocidad?: number | null;
   line: number;
 }
 
@@ -82,7 +76,7 @@ export interface AterrizarNode {
 export interface SensorNode {
   type: "sensor";
   sensor: string;
-  frecuencia: string;
+  frecuencia: number;
   unidad: string | null;
   line: number;
 }
@@ -91,7 +85,7 @@ export interface CondicionalNode {
   type: "condicional";
   variable: string;
   op: string;
-  valor: string;
+  valor: number;
   cmd: CmdNode;
   line: number;
 }

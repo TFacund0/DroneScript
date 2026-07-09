@@ -1,161 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import type { ProgramaNode, CmdNode } from "../types";
+import type { ProgramaNode } from "../types";
+import { interpretAST, type Step, type StepKind } from "../core/simulator";
 
 const CANVAS_W = 580;
 const CANVAS_H = 460;
 const ORIGIN_X = CANVAS_W / 2;
 const ORIGIN_Y = CANVAS_H / 2;
 const SCALE = 0.8;
-
-const DIR_VECTOR: Record<string, [number, number]> = {
-  norte: [0, -1],
-  sur: [0, 1],
-  este: [1, 0],
-  oeste: [-1, 0],
-  noreste: [0.7071, -0.7071],
-  noroeste: [-0.7071, -0.7071],
-  sureste: [0.7071, 0.7071],
-  suroeste: [-0.7071, 0.7071],
-};
-
-type StepKind =
-  | "despegar"
-  | "mover"
-  | "aterrizar"
-  | "sensor"
-  | "condicional"
-  | "base"
-  | "mision";
-
-interface Step {
-  kind: StepKind;
-  label: string;
-  mision: string;
-  dx?: number;
-  dy?: number;
-  dist?: number;
-  sensor?: string;
-  x: number; // Posición física acumulada en X (metros)
-  y: number; // Posición física acumulada en Y (metros)
-  z: number; // Altitud acumulada en Z (metros)
-}
-
-function interpretAST(ast: ProgramaNode): Step[] {
-  const steps: Step[] = [];
-  let cx = 0;
-  let cy = 0;
-  let cz = 0;
-
-  function interpCmd(cmd: CmdNode, mision: string): void {
-    switch (cmd.type) {
-      case "despegar": {
-        const alt = parseFloat(cmd.altitud) || 0;
-        cz = alt;
-        steps.push({
-          kind: "despegar",
-          label: `DESPEGAR ALTITUD ${cmd.altitud}${cmd.unidad || ""}`,
-          mision,
-          x: cx,
-          y: cy,
-          z: cz,
-        });
-        break;
-      }
-      case "mover": {
-        if (cmd.modo === "base") {
-          cx = 0;
-          cy = 0;
-          // cz se mantiene en la altitud actual al regresar a la base
-          steps.push({
-            kind: "base",
-            label: "MOVER BASE",
-            mision,
-            x: cx,
-            y: cy,
-            z: cz,
-          });
-        } else {
-          const dir = (cmd.direccion || "").toLowerCase();
-          const dist = parseFloat(cmd.distancia ?? "0") || 0;
-          if (dir === "arriba") {
-            cz += dist;
-          } else if (dir === "abajo") {
-            cz = Math.max(0, cz - dist);
-          } else {
-            const [dx, dy] = DIR_VECTOR[dir] ?? [0, 0];
-            cx += dx * dist;
-            cy += dy * dist;
-          }
-
-          steps.push({
-            kind: "mover",
-            dx: DIR_VECTOR[dir] ? DIR_VECTOR[dir][0] : undefined,
-            dy: DIR_VECTOR[dir] ? DIR_VECTOR[dir][1] : undefined,
-            dist,
-            label: `MOVER ${cmd.direccion} ${cmd.distancia}${cmd.unidad || ""}`,
-            mision,
-            x: cx,
-            y: cy,
-            z: cz,
-          });
-        }
-        break;
-      }
-      case "aterrizar": {
-        cz = 0;
-        steps.push({
-          kind: "aterrizar",
-          label: "ATERRIZAR",
-          mision,
-          x: cx,
-          y: cy,
-          z: cz,
-        });
-        break;
-      }
-      case "sensor": {
-        steps.push({
-          kind: "sensor",
-          sensor: cmd.sensor,
-          label: `SENSOR ${cmd.sensor}`,
-          mision,
-          x: cx,
-          y: cy,
-          z: cz,
-        });
-        break;
-      }
-      case "condicional": {
-        steps.push({
-          kind: "condicional",
-          label: `SI ${cmd.variable} ${cmd.op} ${cmd.valor}`,
-          mision,
-          x: cx,
-          y: cy,
-          z: cz,
-        });
-        // No ejecutamos el cuerpo del condicional en la trayectoria de simulación por defecto,
-        // para que no ensucie la ruta nominal del dron (como por ejemplo aterrizajes de emergencia).
-        break;
-      }
-    }
-  }
-
-  for (const mision of ast.misiones) {
-    steps.push({
-      kind: "mision",
-      label: `MISION ${mision.nombre}`,
-      mision: mision.nombre,
-      x: cx,
-      y: cy,
-      z: cz,
-    });
-    for (const cmd of mision.bloque?.cmds || []) {
-      interpCmd(cmd, mision.nombre);
-    }
-  }
-  return steps;
-}
 
 const STEP_COLOR: Record<StepKind, string> = {
   despegar: "#00e5a0",
@@ -184,7 +35,7 @@ function drawRoundRect(
   y: number,
   w: number,
   h: number,
-  r: number
+  r: number,
 ) {
   if (r > w / 2) r = w / 2;
   if (r > h / 2) r = h / 2;
@@ -280,10 +131,13 @@ export default function DroneVisualizer({ ast, errors }: Props) {
 
       // 2. Actualizar paneles HUD directamente en el DOM
       const dronePos = dronePosRef.current;
-      if (altValRef.current) altValRef.current.innerText = `${dronePos.z.toFixed(1)} m`;
-      if (xValRef.current) xValRef.current.innerText = `${dronePos.x.toFixed(1)} m`;
+      if (altValRef.current)
+        altValRef.current.innerText = `${dronePos.z.toFixed(1)} m`;
+      if (xValRef.current)
+        xValRef.current.innerText = `${dronePos.x.toFixed(1)} m`;
       // Invertimos Y para que Norte sea positivo visualmente
-      if (yValRef.current) yValRef.current.innerText = `${(-dronePos.y).toFixed(1)} m`;
+      if (yValRef.current)
+        yValRef.current.innerText = `${(-dronePos.y).toFixed(1)} m`;
 
       let statusStr = "EN TIERRA";
       let statusColor = "#ff3d5a";
@@ -418,8 +272,11 @@ export default function DroneVisualizer({ ast, errors }: Props) {
       ctx.fillText("BASE", basePos.x, basePos.y);
 
       // Dibujar trayectorias
-      const stepsToRender = currentStep >= 0 ? steps.slice(0, currentStep + 1) : [];
-      const path: Array<{ x: number; y: number; z: number }> = [{ x: 0, y: 0, z: 0 }];
+      const stepsToRender =
+        currentStep >= 0 ? steps.slice(0, currentStep + 1) : [];
+      const path: Array<{ x: number; y: number; z: number }> = [
+        { x: 0, y: 0, z: 0 },
+      ];
       for (const step of stepsToRender) {
         path.push({ x: step.x, y: step.y, z: step.z });
       }
@@ -465,8 +322,14 @@ export default function DroneVisualizer({ ast, errors }: Props) {
             ctx.fillStyle = "#4d9eff";
             ctx.beginPath();
             ctx.moveTo(mx + Math.cos(angle) * 5, my + Math.sin(angle) * 5);
-            ctx.lineTo(mx + Math.cos(angle + 2.4) * 3.5, my + Math.sin(angle + 2.4) * 3.5);
-            ctx.lineTo(mx + Math.cos(angle - 2.4) * 3.5, my + Math.sin(angle - 2.4) * 3.5);
+            ctx.lineTo(
+              mx + Math.cos(angle + 2.4) * 3.5,
+              my + Math.sin(angle + 2.4) * 3.5,
+            );
+            ctx.lineTo(
+              mx + Math.cos(angle - 2.4) * 3.5,
+              my + Math.sin(angle - 2.4) * 3.5,
+            );
             ctx.closePath();
             ctx.fill();
           }
@@ -536,9 +399,25 @@ export default function DroneVisualizer({ ast, errors }: Props) {
       ctx.fillStyle = `rgba(5, 7, 12, ${shadowOpacity})`;
       ctx.beginPath();
       if (isIsometric) {
-        ctx.ellipse(shadowPos.x, shadowPos.y, 16 * hFactor, 8 * hFactor, 0, 0, Math.PI * 2);
+        ctx.ellipse(
+          shadowPos.x,
+          shadowPos.y,
+          16 * hFactor,
+          8 * hFactor,
+          0,
+          0,
+          Math.PI * 2,
+        );
       } else {
-        ctx.ellipse(shadowPos.x, shadowPos.y, 14 * hFactor, 7 * hFactor, 0, 0, Math.PI * 2);
+        ctx.ellipse(
+          shadowPos.x,
+          shadowPos.y,
+          14 * hFactor,
+          7 * hFactor,
+          0,
+          0,
+          Math.PI * 2,
+        );
       }
       ctx.fill();
 
@@ -561,7 +440,7 @@ export default function DroneVisualizer({ ast, errors }: Props) {
         const tagH = 14;
         const tagX = (shadowPos.x + dronePosRender.x) / 2 + 10;
         const tagY = (shadowPos.y + dronePosRender.y) / 2 - tagH / 2;
-        
+
         drawRoundRect(ctx, tagX, tagY, tagW, tagH, 3);
         ctx.fill();
         ctx.stroke();
@@ -570,14 +449,21 @@ export default function DroneVisualizer({ ast, errors }: Props) {
         ctx.font = "bold 8px Space Mono, monospace";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(`${dronePos.z.toFixed(0)}m`, tagX + tagW / 2, tagY + tagH / 2);
+        ctx.fillText(
+          `${dronePos.z.toFixed(0)}m`,
+          tagX + tagW / 2,
+          tagY + tagH / 2,
+        );
       }
 
       // Estructura del Dron (brazos, motores y hélices)
-      const dScale = isIsometric ? 1 : (1 + dronePos.z / 300);
+      const dScale = isIsometric ? 1 : 1 + dronePos.z / 300;
       const armLen = 11 * dScale;
       const arms: [number, number][] = [
-        [1, 1], [-1, 1], [1, -1], [-1, -1]
+        [1, 1],
+        [-1, 1],
+        [1, -1],
+        [-1, -1],
       ];
 
       // Brazos diagonales (adaptando la elipse si es isométrica)
@@ -586,7 +472,10 @@ export default function DroneVisualizer({ ast, errors }: Props) {
       for (const [ax, ay] of arms) {
         ctx.beginPath();
         ctx.moveTo(dronePosRender.x, dronePosRender.y);
-        ctx.lineTo(dronePosRender.x + ax * armLen, dronePosRender.y + ay * armLen * (isIsometric ? 0.65 : 1));
+        ctx.lineTo(
+          dronePosRender.x + ax * armLen,
+          dronePosRender.y + ay * armLen * (isIsometric ? 0.65 : 1),
+        );
         ctx.stroke();
       }
 
@@ -627,14 +516,28 @@ export default function DroneVisualizer({ ast, errors }: Props) {
 
         // Aspa 1
         ctx.beginPath();
-        ctx.moveTo(mx - Math.cos(bAngle) * bladeLen, my - Math.sin(bAngle) * bladeLen * (isIsometric ? 0.5 : 1));
-        ctx.lineTo(mx + Math.cos(bAngle) * bladeLen, my + Math.sin(bAngle) * bladeLen * (isIsometric ? 0.5 : 1));
+        ctx.moveTo(
+          mx - Math.cos(bAngle) * bladeLen,
+          my - Math.sin(bAngle) * bladeLen * (isIsometric ? 0.5 : 1),
+        );
+        ctx.lineTo(
+          mx + Math.cos(bAngle) * bladeLen,
+          my + Math.sin(bAngle) * bladeLen * (isIsometric ? 0.5 : 1),
+        );
         ctx.stroke();
 
         // Aspa 2
         ctx.beginPath();
-        ctx.moveTo(mx - Math.cos(bAngle + Math.PI / 2) * bladeLen, my - Math.sin(bAngle + Math.PI / 2) * bladeLen * (isIsometric ? 0.5 : 1));
-        ctx.lineTo(mx + Math.cos(bAngle + Math.PI / 2) * bladeLen, my + Math.sin(bAngle + Math.PI / 2) * bladeLen * (isIsometric ? 0.5 : 1));
+        ctx.moveTo(
+          mx - Math.cos(bAngle + Math.PI / 2) * bladeLen,
+          my -
+            Math.sin(bAngle + Math.PI / 2) * bladeLen * (isIsometric ? 0.5 : 1),
+        );
+        ctx.lineTo(
+          mx + Math.cos(bAngle + Math.PI / 2) * bladeLen,
+          my +
+            Math.sin(bAngle + Math.PI / 2) * bladeLen * (isIsometric ? 0.5 : 1),
+        );
         ctx.stroke();
       }
 
@@ -643,7 +546,15 @@ export default function DroneVisualizer({ ast, errors }: Props) {
       ctx.fillStyle = "#161b26";
       ctx.beginPath();
       if (isIsometric) {
-        ctx.ellipse(dronePosRender.x, dronePosRender.y, bodyRad, bodyRad * 0.65, 0, 0, Math.PI * 2);
+        ctx.ellipse(
+          dronePosRender.x,
+          dronePosRender.y,
+          bodyRad,
+          bodyRad * 0.65,
+          0,
+          0,
+          Math.PI * 2,
+        );
       } else {
         ctx.arc(dronePosRender.x, dronePosRender.y, bodyRad, 0, Math.PI * 2);
       }
@@ -653,7 +564,15 @@ export default function DroneVisualizer({ ast, errors }: Props) {
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       if (isIsometric) {
-        ctx.ellipse(dronePosRender.x, dronePosRender.y, bodyRad, bodyRad * 0.65, 0, 0, Math.PI * 2);
+        ctx.ellipse(
+          dronePosRender.x,
+          dronePosRender.y,
+          bodyRad,
+          bodyRad * 0.65,
+          0,
+          0,
+          Math.PI * 2,
+        );
       } else {
         ctx.arc(dronePosRender.x, dronePosRender.y, bodyRad, 0, Math.PI * 2);
       }
@@ -661,9 +580,10 @@ export default function DroneVisualizer({ ast, errors }: Props) {
 
       // LED de estado central parpadeante
       const pulse = (Math.sin(Date.now() / 150) + 1) / 2;
-      const ledColor = dronePos.z > 0.5
-        ? `rgba(0, 229, 160, ${0.4 + pulse * 0.6})`
-        : "rgba(255, 61, 90, 0.8)";
+      const ledColor =
+        dronePos.z > 0.5
+          ? `rgba(0, 229, 160, ${0.4 + pulse * 0.6})`
+          : "rgba(255, 61, 90, 0.8)";
       ctx.fillStyle = ledColor;
       ctx.beginPath();
       ctx.arc(dronePosRender.x, dronePosRender.y, 3 * dScale, 0, Math.PI * 2);
@@ -767,17 +687,42 @@ export default function DroneVisualizer({ ast, errors }: Props) {
               boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
             }}
           >
-            <div style={{ color: "#4d9eff", fontWeight: "bold", fontSize: 11, marginBottom: 2 }}>
+            <div
+              style={{
+                color: "#4d9eff",
+                fontWeight: "bold",
+                fontSize: 11,
+                marginBottom: 2,
+              }}
+            >
               TELEMETRÍA DRON
             </div>
             <div>
-              ALTITUD: <span ref={altValRef} style={{ color: "#e8ecf5", fontWeight: "bold" }}>0.0 m</span>
+              ALTITUD:{" "}
+              <span
+                ref={altValRef}
+                style={{ color: "#e8ecf5", fontWeight: "bold" }}
+              >
+                0.0 m
+              </span>
             </div>
             <div>
-              COORD X: <span ref={xValRef} style={{ color: "#e8ecf5", fontWeight: "bold" }}>0.0 m</span>
+              COORD X:{" "}
+              <span
+                ref={xValRef}
+                style={{ color: "#e8ecf5", fontWeight: "bold" }}
+              >
+                0.0 m
+              </span>
             </div>
             <div>
-              COORD Y: <span ref={yValRef} style={{ color: "#e8ecf5", fontWeight: "bold" }}>0.0 m</span>
+              COORD Y:{" "}
+              <span
+                ref={yValRef}
+                style={{ color: "#e8ecf5", fontWeight: "bold" }}
+              >
+                0.0 m
+              </span>
             </div>
           </div>
         )}
@@ -804,14 +749,33 @@ export default function DroneVisualizer({ ast, errors }: Props) {
               boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
             }}
           >
-            <div style={{ color: "#4d9eff", fontWeight: "bold", fontSize: 11, marginBottom: 2 }}>
+            <div
+              style={{
+                color: "#4d9eff",
+                fontWeight: "bold",
+                fontSize: 11,
+                marginBottom: 2,
+              }}
+            >
               SISTEMA DE MOTORES
             </div>
             <div>
-              ESTADO: <span ref={statusValRef} style={{ color: "#ff3d5a", fontWeight: "bold" }}>EN TIERRA</span>
+              ESTADO:{" "}
+              <span
+                ref={statusValRef}
+                style={{ color: "#ff3d5a", fontWeight: "bold" }}
+              >
+                EN TIERRA
+              </span>
             </div>
             <div>
-              ROTORES: <span ref={rotorsValRef} style={{ color: "#ff3d5a", fontWeight: "bold" }}>APAGADOS</span>
+              ROTORES:{" "}
+              <span
+                ref={rotorsValRef}
+                style={{ color: "#ff3d5a", fontWeight: "bold" }}
+              >
+                APAGADOS
+              </span>
             </div>
           </div>
         )}
@@ -1003,16 +967,31 @@ export default function DroneVisualizer({ ast, errors }: Props) {
             </button>
 
             {/* Separador vertical y botones de velocidad */}
-            <div style={{ width: 1, background: "var(--border)", margin: "0 6px" }} />
+            <div
+              style={{ width: 1, background: "var(--border)", margin: "0 6px" }}
+            />
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              <span style={{ color: "var(--text-muted)", fontSize: 11, marginRight: 4, ...mono }}>Velocidad:</span>
+              <span
+                style={{
+                  color: "var(--text-muted)",
+                  fontSize: 11,
+                  marginRight: 4,
+                  ...mono,
+                }}
+              >
+                Velocidad:
+              </span>
               {([0.5, 1, 2] as const).map((spd) => (
                 <button
                   key={spd}
                   onClick={() => setSpeedMultiplier(spd)}
                   style={{
-                    background: speedMultiplier === spd ? "rgba(77, 158, 255, 0.15)" : "var(--bg-panel)",
-                    color: speedMultiplier === spd ? "#4d9eff" : "var(--text-muted)",
+                    background:
+                      speedMultiplier === spd
+                        ? "rgba(77, 158, 255, 0.15)"
+                        : "var(--bg-panel)",
+                    color:
+                      speedMultiplier === spd ? "#4d9eff" : "var(--text-muted)",
                     border: `1px solid ${speedMultiplier === spd ? "#4d9eff" : "var(--border)"}`,
                     padding: "4px 8px",
                     borderRadius: 3,

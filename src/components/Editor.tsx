@@ -1,6 +1,7 @@
-import React from "react";
-import MonacoEditor from "@monaco-editor/react";
+import { useEffect, useRef } from "react";
+import MonacoEditor, { type OnMount } from "@monaco-editor/react";
 import { EXAMPLES } from "../constants/exampleCode";
+import type { LexError, ParseError } from "../types";
 
 const EXAMPLE_LABELS = [
   { key: "valid1", label: "✓ simple" },
@@ -17,9 +18,46 @@ interface Props {
   setCode: (v: string) => void;
   onAnalyze: () => void;
   isDark: boolean;
+  errors: Array<LexError | ParseError>;
 }
 
-export default function Editor({ code, setCode, onAnalyze, isDark }: Props) {
+export default function Editor({
+  code,
+  setCode,
+  onAnalyze,
+  isDark,
+  errors,
+}: Props) {
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
+
+  const handleMount: OnMount = (editor, monaco) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+  };
+
+  // Subraya en rojo las líneas con errores léxicos/sintácticos (diagnostics)
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    const model = editor?.getModel();
+    if (!editor || !monaco || !model) return;
+
+    const markers = errors.map((err) => {
+      const line = Math.min(Math.max(err.line, 1), model.getLineCount());
+      const col = err.col && err.col > 0 ? err.col : 1;
+      return {
+        severity: monaco.MarkerSeverity.Error,
+        message: err.message,
+        startLineNumber: line,
+        startColumn: col,
+        endLineNumber: line,
+        endColumn: Math.max(col + 1, model.getLineMaxColumn(line)),
+      };
+    });
+    monaco.editor.setModelMarkers(model, "dronescript", markers);
+  }, [errors]);
+
   // Theme values
   const theme = {
     bg: isDark ? "#0d0f14" : "#ffffff",
@@ -62,12 +100,20 @@ export default function Editor({ code, setCode, onAnalyze, isDark }: Props) {
       >
         <span>editor.ds</span>
       </div>
-      <div style={{ flex: 1, minHeight: 0, overflow: "hidden", background: theme.bg }}>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflow: "hidden",
+          background: theme.bg,
+        }}
+      >
         <MonacoEditor
           height="100%"
           defaultLanguage="plaintext"
           value={code}
           onChange={(v) => setCode(v || "")}
+          onMount={handleMount}
           theme={isDark ? "vs-dark" : "vs"}
           options={{
             fontSize: 12,
@@ -120,8 +166,12 @@ export default function Editor({ code, setCode, onAnalyze, isDark }: Props) {
               (e.target as HTMLButtonElement).style.color = "#00e5a0";
             }}
             onMouseLeave={(e) => {
-              (e.target as HTMLButtonElement).style.borderColor = isDark ? "#252a38" : "#cbd5e1";
-              (e.target as HTMLButtonElement).style.color = isDark ? "#6b7280" : "#475569";
+              (e.target as HTMLButtonElement).style.borderColor = isDark
+                ? "#252a38"
+                : "#cbd5e1";
+              (e.target as HTMLButtonElement).style.color = isDark
+                ? "#6b7280"
+                : "#475569";
             }}
           >
             {label}
