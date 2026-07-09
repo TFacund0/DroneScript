@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ProgramaNode, CmdNode } from "../types";
 
-const GRID_SIZE = 40;
 const CANVAS_W = 580;
 const CANVAS_H = 460;
 const ORIGIN_X = CANVAS_W / 2;

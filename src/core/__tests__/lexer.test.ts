@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { Lexer, tokenize } from "../lexer";
+import { tokenize } from "../lexer";
 
 describe("DroneScript Lexer", () => {
   it("debe tokenizar palabras clave (keywords) en mayúsculas", () => {

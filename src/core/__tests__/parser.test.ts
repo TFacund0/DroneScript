@@ -8,8 +8,8 @@
 
 import { describe, it, expect } from "vitest";
 import { tokenize } from "../lexer";
-import { Parser, parse } from "../parser";
-import type { ProgramaNode, DespecarNode, MoverNode, AterrizarNode, SensorNode, CondicionalNode } from "../../types";
+import { parse } from "../parser";
+import type { DespecarNode, MoverNode, AterrizarNode, SensorNode, CondicionalNode } from "../../types";
 
 describe("DroneScript Parser", () => {
   it("debe parsear un programa básico válido", () => {
@@ -212,9 +212,13 @@ describe("DroneScript Parser", () => {
     expect(errors[0].message).toContain("token inesperado");
 
     const cmds = ast.misiones[0].bloque.cmds;
-    expect(cmds).toHaveLength(1);
+    // El condicional con nodo error + nodos error por los tokens sobrantes
+    // ('izquierda' y '90') que la recuperación descarta uno a uno
+    expect(cmds).toHaveLength(3);
     const cmdSi = cmds[0] as CondicionalNode;
     expect(cmdSi.type).toBe("condicional");
     expect(cmdSi.cmd.type).toBe("error");
+    expect(cmds[1].type).toBe("error");
+    expect(cmds[2].type).toBe("error");
   });
 });

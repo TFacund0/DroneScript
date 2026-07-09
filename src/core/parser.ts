@@ -1,5 +1,6 @@
 import type {
   Token,
+  TokenType,
   ParseError,
   ParseResult,
   ProgramaNode,
@@ -47,7 +48,7 @@ export class Parser {
    * Avanza la posición del cursor de lectura y reporta un error si no coincide.
    */
   private consume(
-    tipoEsperado: string,
+    tipoEsperado: TokenType,
     valorEsperado: string | null = null,
   ): Token {
     const tokenActual = this.peek();
@@ -84,7 +85,7 @@ export class Parser {
     // No incrementamos la posicionActual para que el token real no sea descartado
     // y pueda ser analizado por la siguiente llamada a consume.
     return {
-      type: tipoEsperado as any,
+      type: tipoEsperado,
       value: valorEsperado || "",
       line: errorLine,
       col: errorCol,

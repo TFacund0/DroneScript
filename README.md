@@ -1,106 +1,129 @@
-# DroneScript
+# 🚁 DroneScript
 
-DroneScript es un entorno de desarrollo integrado y lenguaje de dominio específico (DSL) diseñado para la planificación, validación y simulación de misiones autónomas de vehículos aéreos no tripulados (UAVs). El sistema combina un compilador frontend (análisis léxico y sintáctico) desarrollado a medida con un visualizador interactivo en tiempo real para garantizar la seguridad y corrección lógica de los planes de vuelo antes de su despliegue físico.
+> Lenguaje de dominio específico (DSL) para planificar, validar y simular misiones de drones — con lexer y parser LL(1) implementados desde cero en TypeScript, y un IDE web interactivo con simulación en tiempo real.
 
-## Descripción del Sistema
+**🔗 [Probar la demo en vivo →](https://drone-script.vercel.app/)**
 
-El proyecto proporciona un pipeline completo para la interpretación de instrucciones de navegación aeronáutica:
+[![CI](https://github.com/TFacund0/DroneScript/actions/workflows/ci.yml/badge.svg)](https://github.com/TFacund0/DroneScript/actions/workflows/ci.yml)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-vitest-6E9F18?logo=vitest&logoColor=white)
+[![Demo](https://img.shields.io/badge/demo-vercel-000000?logo=vercel&logoColor=white)](https://drone-script.vercel.app/)
 
-1. **Analizador Léxico (Lexer):** Procesa el flujo de caracteres de entrada para generar un torrente de componentes léxicos (tokens), clasificando palabras clave del dominio (como comandos de movimiento, control de altitud, consultas de sensores y condicionales), identificadores de dirección, magnitudes y operadores de comparación. Incluye un sistema permisivo de recuperación ante errores léxicos para identificar caracteres inválidos sin detener el análisis completo.
-2. **Analizador Sintáctico (Parser):** Valida la estructura gramatical del programa de acuerdo a las reglas sintácticas del lenguaje. Si la sintaxis es correcta, construye un Árbol de Sintaxis Abstracta (AST) que representa la jerarquía y secuencia de ejecución de la misión.
-3. **Entorno de Simulación y Visualización:** Interfaz gráfica web interactiva desarrollada sobre React y Vite. Permite a los desarrolladores escribir código DroneScript con retroalimentación inmediata sobre la validez sintáctica, depurar mediante la inspección interactiva del AST y simular de forma tridimensional el comportamiento físico y el recorrido del dron programado.
+<!-- TODO: reemplazar por un screenshot o GIF real del simulador -->
+<!-- ![Demo de DroneScript](docs/demo.gif) -->
 
-## Casos de Uso y Aplicación en el Mundo Real
+## ¿Qué es?
 
-En el ámbito laboral y de desarrollo industrial, DroneScript y arquitecturas similares resuelven problemáticas críticas en el sector aeroespacial y de automatización:
+DroneScript es un proyecto de **Teoría de la Computación** que implementa el frontend completo de un compilador para un lenguaje de misiones de vuelo:
 
-* **Abstracción del Hardware (Hardware Abstraction Layer):** Permite a los operadores definir misiones complejas en un lenguaje de alto nivel estandarizado, el cual puede ser posteriormente transpilado o interpretado para diferentes plataformas de hardware comerciales (como PX4, ArduPilot o SDKs de fabricantes específicos como DJI) sin alterar la lógica de negocio de la misión.
-* **Validación de Seguridad Previa al Vuelo (Pre-flight Safety Check):** Al validar la sintaxis y generar un AST, es posible aplicar análisis estático de código para detectar trayectorias prohibidas, colisiones potenciales o comportamientos fuera de los límites de seguridad física (geofencing) antes de cargar la misión al UAV.
-* **Automatización en Logística y Monitoreo:** Facilita la programación de rutinas de inspección industrial repetitivas, patrullajes de seguridad aérea, mapeo agrícola y entrega de paquetes mediante la integración de sensores telemétricos (batería, viento, altitud y temperatura) en la toma de decisiones dinámicas durante el vuelo.
-* **Plataforma de Simulación e Instrucción:** Sirve como herramienta de entrenamiento y simulación para operadores de drones, reduciendo a cero el coste y el riesgo de colisión durante la fase de desarrollo y aprendizaje de algoritmos de navegación.
+```
+MISION "patrulla_campo"
+  DESPEGAR ALTITUD 100 m
+  MOVER norte 200 m VELOCIDAD 5
+  SENSOR temperatura FRECUENCIA 10 s
+  SI bateria < 20 ENTONCES
+    ATERRIZAR
+  FIN
+  MOVER BASE
+  ATERRIZAR
+FIN
+```
 
+El código se analiza en vivo mientras escribís: se tokeniza, se parsea, se construye el AST y se simula el vuelo del dron en un visualizador interactivo.
 
-## Guía de Instalación, Compilación y Ejecución
+## Características
 
-Esta sección detalla los pasos para configurar, compilar y ejecutar el proyecto en tu entorno local.
+- ✈️ **Lexer hecho a mano** con recuperación de errores: los caracteres inválidos se reportan sin detener el análisis.
+- 🌳 **Parser descendente recursivo LL(1)** que construye un Árbol de Sintaxis Abstracta (AST) tipado y reporta errores sintácticos con línea y columna.
+- 📐 **Gramática demostrada LL(1)**: los conjuntos FIRST y FOLLOW de cada no-terminal están documentados en [`docs/first_follow.md`](docs/first_follow.md).
+- 🖥️ **IDE web** con editor Monaco (el de VS Code), paneles de tokens, AST navegable, gramática y errores.
+- 🛰️ **Simulador visual** que interpreta el AST y anima la trayectoria del dron (direcciones, altitud, velocidad, sensores y condicionales).
+- 🧪 **Suite de tests**: unitarios para lexer y parser (Vitest) + pipeline de integración sobre un catálogo de casos válidos e inválidos ([`tests/cases.json`](tests/cases.json)).
 
-### Prerrequisitos
+## El lenguaje
 
-Asegúrate de tener instalado:
-* **Node.js** (versión 18 o superior recomendada)
-* Un gestor de paquetes de Node.js: **pnpm** (recomendado, ya que el proyecto incluye `pnpm-lock.yaml`), o alternativamente **npm** o **yarn**.
+| Instrucción | Sintaxis | Ejemplo |
+| :--- | :--- | :--- |
+| Misión | `MISION "nombre" ... FIN` | `MISION "vuelo" ... FIN` |
+| Despegue | `DESPEGAR ALTITUD <n> [unidad]` | `DESPEGAR ALTITUD 50 m` |
+| Movimiento | `MOVER <dirección> <n> [unidad] [VELOCIDAD <n>]` | `MOVER norte 200 m VELOCIDAD 5` |
+| Retorno | `MOVER BASE` | `MOVER BASE` |
+| Aterrizaje | `ATERRIZAR` | `ATERRIZAR` |
+| Sensor | `SENSOR <tipo> FRECUENCIA <n> [unidad]` | `SENSOR viento FRECUENCIA 5 s` |
+| Condicional | `SI <sensor> <op> <n> ENTONCES <cmd>` | `SI bateria < 20 ENTONCES ATERRIZAR` |
 
-### 1. Instalación de Dependencias
+**Direcciones:** `norte`, `sur`, `este`, `oeste`, `noreste`, `noroeste`, `sureste`, `suroeste`, `arriba`, `abajo` · **Sensores:** `temperatura`, `bateria`, `altura`, `velocidad`, `viento` · **Operadores:** `<`, `>`, `<=`, `>=`, `==` · Los condicionales se pueden anidar y `#` inicia un comentario de línea.
 
-Ejecuta el siguiente comando en la raíz del proyecto para descargar e instalar todas las dependencias requeridas (incluyendo Monaco Editor y los tipos de React/TypeScript):
+## Arquitectura
+
+```
+Código fuente ──▶ Lexer ──▶ Tokens ──▶ Parser ──▶ AST ──▶ Simulador / Paneles
+                    │                    │
+                    └── errores léxicos ─┴── errores sintácticos
+```
+
+```
+src/
+├── core/               # Frontend del compilador (sin dependencias de UI)
+│   ├── lexer.ts        #   Análisis léxico con recuperación de errores
+│   ├── parser.ts       #   Parser descendente recursivo LL(1) → AST
+│   └── __tests__/      #   Tests unitarios
+├── components/         # UI: editor Monaco, paneles y simulador
+├── hooks/
+│   └── useAnalyzer.ts  # Conecta el pipeline con React
+├── constants/          # Ejemplos de código y colores de tokens
+└── types.ts            # Tokens, nodos del AST y errores (tipado compartido)
+tests/
+├── cases.json          # Catálogo de casos válidos e inválidos
+└── runner.ts           # Runner de integración del pipeline completo
+docs/
+└── first_follow.md     # Demostración formal de que la gramática es LL(1)
+```
+
+El núcleo del compilador (`src/core/`) es TypeScript puro sin dependencias de React, por lo que puede reutilizarse en un CLI, un backend o transpilarse a plataformas reales (PX4, ArduPilot, SDKs de fabricante).
+
+## Empezar
+
+Requisitos: **Node.js 18+** y **pnpm** (o npm/yarn).
 
 ```bash
-pnpm install
+pnpm install      # instalar dependencias
+pnpm dev          # servidor de desarrollo → http://localhost:5173
 ```
-*(Si prefieres usar npm, ejecuta `npm install`)*
 
-### 2. Ejecución en Modo de Desarrollo
+Otros comandos:
 
-Para iniciar el servidor de desarrollo local de Vite y abrir la aplicación interactiva en tu navegador:
+| Comando | Descripción |
+| :--- | :--- |
+| `pnpm build` | Chequeo de tipos + build de producción en `./dist` |
+| `pnpm preview` | Sirve localmente el build de producción |
+| `pnpm typecheck` | Solo verificación de tipos de TypeScript |
+| `pnpm lint` | ESLint sobre todo el proyecto |
+| `pnpm format` | Formatea el código con Prettier |
+| `pnpm test` | Tests unitarios de lexer y parser |
+| `pnpm test:watch` | Tests en modo watch |
+| `pnpm test:integration` | Pipeline completo sobre `tests/cases.json` |
 
-```bash
-pnpm dev
-```
-*(O `npm run dev` con npm)*
+## Fundamento teórico
 
-Una vez iniciado, abre tu navegador en la dirección local indicada en la terminal (usualmente `http://localhost:5173`).
+La gramática fue factorizada por izquierda para eliminar ambigüedades (p. ej. `MOVER dirección ...` vs `MOVER BASE`) y se verificó la condición LL(1): para cada no-terminal, los conjuntos FIRST de sus alternativas son disjuntos, y donde existe la producción vacía, FIRST y FOLLOW también lo son. La tabla completa está en [`docs/first_follow.md`](docs/first_follow.md).
 
-### 3. Compilación para Producción
+Esto garantiza que el parser descendente recursivo decide cada derivación con **un solo token de anticipación**, sin backtracking.
 
-Para compilar el proyecto y generar los archivos optimizados listos para su distribución:
+## Roadmap
 
-```bash
-pnpm build
-```
-*(O `npm run build` con npm)*
+- [ ] Análisis semántico (validación de rangos de sensores, misiones sin `ATERRIZAR`, geofencing)
+- [ ] Diagnósticos en el editor (subrayado de errores en Monaco)
+- [ ] Extraer `core/` como paquete independiente + CLI (`dronescript check mision.ds`)
+- [x] Integración continua (lint + tipos + tests + build en cada push)
+- [x] Demo desplegada en Vercel
 
-Este comando realiza el chequeo de tipos de TypeScript (`tsc`) y posteriormente empaqueta los archivos estáticos mediante Vite en el directorio `./dist`.
+## Contexto académico
 
-### 4. Vista Previa de la Compilación de Producción
+Proyecto desarrollado para la cátedra **Teoría de la Computación** (Licenciatura en Sistemas de Información), como aplicación práctica de análisis léxico, gramáticas libres de contexto y parsing LL(1).
 
-Para probar localmente el paquete generado en `./dist` tal como se comportaría en producción:
+## Licencia
 
-```bash
-pnpm preview
-```
-*(O `npm run preview` con npm)*
-
-### 5. Chequeo de Tipos y Linter
-
-Si deseas ejecutar únicamente la verificación estática de TypeScript para comprobar la ausencia de errores de tipado:
-
-```bash
-pnpm typecheck
-```
-*(O `npm run typecheck` con npm)*
-
-### 6. Ejecución de Pruebas (Testing)
-
-El proyecto cuenta con suites de pruebas unitarias y de integración para validar el funcionamiento del Lexer y el Parser.
-
-#### Pruebas Unitarias (con Vitest)
-Para correr las pruebas unitarias:
-```bash
-pnpm test
-```
-*(O `npm run test` con npm)*
-
-Para correr las pruebas unitarias en modo interactivo/watch:
-```bash
-pnpm test:watch
-```
-*(O `npm run test:watch` con npm)*
-
-#### Pruebas de Integración Generales
-Para correr el pipeline completo sobre el catálogo de casos de prueba definidos en `tests/cases.json`:
-```bash
-pnpm test:integration
-```
-*(O `npm run test:integration` con npm)*
-
-
+Distribuido bajo la licencia [MIT](LICENSE).

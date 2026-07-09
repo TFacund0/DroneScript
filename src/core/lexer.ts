@@ -107,7 +107,7 @@ export class Lexer {
         this.leerOperador();
         continue;
       }
-      if (/[a-zA-ZáéíóúÁÉÍÓÚñÑ_]/.test(caracterActual)) {
+      if (/[a-zA-Z_]/.test(caracterActual)) {
         this.leerIdentificadorOPalabraClave();
         continue;
       }
@@ -245,7 +245,7 @@ export class Lexer {
     let palabra = "";
     while (
       this.indiceActual < this.codigoFuente.length &&
-      /[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9_]/.test(this.codigoFuente[this.indiceActual])
+      /[a-zA-Z_]/.test(this.codigoFuente[this.indiceActual])
     ) {
       palabra += this.codigoFuente[this.indiceActual++];
     }
