@@ -89,6 +89,7 @@ export default function App() {
           onAnalyze={analyze}
           isDark={isDark}
           errors={result?.errors ?? []}
+          warnings={result?.warnings ?? []}
         />
 
         <div
@@ -205,6 +206,12 @@ export default function App() {
                   {visibleTokens.length} tokens · {countNodes(result.ast)} nodos
                   en AST
                 </span>
+                {result.warnings.length > 0 && (
+                  <span style={{ color: "#ffd166" }}>
+                    ⚠ {result.warnings.length} advertencia
+                    {result.warnings.length !== 1 ? "s" : ""}
+                  </span>
+                )}
               </>
             )}
             {result && !isValid && (

@@ -6,7 +6,8 @@ interface Props {
 
 export default function ErrorPanel({ result }: Props) {
   const errors = result.errors;
-  if (errors.length === 0)
+  const warnings = result.warnings;
+  if (errors.length === 0 && warnings.length === 0)
     return (
       <div
         style={{
@@ -38,8 +39,9 @@ export default function ErrorPanel({ result }: Props) {
           fontFamily: "'Space Mono', monospace",
         }}
       >
-        {errors.length} error{errors.length !== 1 ? "es" : ""} encontrado
-        {errors.length !== 1 ? "s" : ""}
+        {errors.length} error{errors.length !== 1 ? "es" : ""}
+        {warnings.length > 0 &&
+          ` · ${warnings.length} advertencia${warnings.length !== 1 ? "s" : ""}`}
       </div>
       {errors.map((err, i) => (
         <div
@@ -64,6 +66,32 @@ export default function ErrorPanel({ result }: Props) {
           </div>
           <div style={{ color: "#ff8099", fontSize: 11, lineHeight: 1.6 }}>
             {err.message}
+          </div>
+        </div>
+      ))}
+      {warnings.map((warn, i) => (
+        <div
+          key={`w${i}`}
+          style={{
+            padding: "14px 16px",
+            background: "#ffd16610",
+            border: "1px solid #ffd16630",
+            borderRadius: 6,
+            fontFamily: "'Space Mono', monospace",
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 700,
+              marginBottom: 6,
+              fontSize: 12,
+              color: "#ffd166",
+            }}
+          >
+            ⚠ Advertencia — línea {warn.line || "?"}
+          </div>
+          <div style={{ color: "#ffe3a3", fontSize: 11, lineHeight: 1.6 }}>
+            {warn.message}
           </div>
         </div>
       ))}

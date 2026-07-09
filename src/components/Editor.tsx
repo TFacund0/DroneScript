@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import MonacoEditor, { type OnMount } from "@monaco-editor/react";
 import { EXAMPLES } from "../constants/exampleCode";
-import type { LexError, ParseError } from "../types";
+import type { LexError, ParseError, SemanticError } from "../types";
 
 const EXAMPLE_LABELS = [
   { key: "valid1", label: "✓ simple" },
@@ -18,7 +18,8 @@ interface Props {
   setCode: (v: string) => void;
   onAnalyze: () => void;
   isDark: boolean;
-  errors: Array<LexError | ParseError>;
+  errors: Array<LexError | ParseError | SemanticError>;
+  warnings: SemanticError[];
 }
 
 export default function Editor({
@@ -27,6 +28,7 @@ export default function Editor({
   onAnalyze,
   isDark,
   errors,
+  warnings,
 }: Props) {
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
@@ -43,20 +45,28 @@ export default function Editor({
     const model = editor?.getModel();
     if (!editor || !monaco || !model) return;
 
-    const markers = errors.map((err) => {
+    const toMarker = (
+      err: { message: string; line: number; col?: number },
+      severity: number,
+    ) => {
       const line = Math.min(Math.max(err.line, 1), model.getLineCount());
       const col = err.col && err.col > 0 ? err.col : 1;
       return {
-        severity: monaco.MarkerSeverity.Error,
+        severity,
         message: err.message,
         startLineNumber: line,
         startColumn: col,
         endLineNumber: line,
         endColumn: Math.max(col + 1, model.getLineMaxColumn(line)),
       };
-    });
+    };
+
+    const markers = [
+      ...errors.map((e) => toMarker(e, monaco.MarkerSeverity.Error)),
+      ...warnings.map((w) => toMarker(w, monaco.MarkerSeverity.Warning)),
+    ];
     monaco.editor.setModelMarkers(model, "dronescript", markers);
-  }, [errors]);
+  }, [errors, warnings]);
 
   // Theme values
   const theme = {

@@ -38,6 +38,8 @@ El código se analiza en vivo mientras escribís: se tokeniza, se parsea, se con
 - ✈️ **Lexer hecho a mano** con recuperación de errores: los caracteres inválidos se reportan sin detener el análisis.
 - 🌳 **Parser descendente recursivo LL(1)** que construye un Árbol de Sintaxis Abstracta (AST) tipado y reporta errores sintácticos con línea y columna.
 - 📐 **Gramática demostrada LL(1)**: los conjuntos FIRST y FOLLOW de cada no-terminal están documentados en [`docs/first_follow.md`](docs/first_follow.md).
+- 🧠 **Análisis semántico**: valida reglas que la gramática no puede expresar — mover el dron antes de despegar, despegues duplicados, misiones que terminan en el aire, condiciones físicamente imposibles (`bateria > 150`) — distinguiendo errores de advertencias.
+- 🔴 **Diagnostics en el editor**: los errores se subrayan en rojo (y las advertencias en amarillo) directamente sobre el código, como en VS Code.
 - 🖥️ **IDE web** con editor Monaco (el de VS Code), paneles de tokens, AST navegable, gramática y errores.
 - 🛰️ **Simulador visual** que interpreta el AST y anima la trayectoria del dron (direcciones, altitud, velocidad, sensores y condicionales).
 - 🧪 **Suite de tests**: unitarios para lexer y parser (Vitest) + pipeline de integración sobre un catálogo de casos válidos e inválidos ([`tests/cases.json`](tests/cases.json)).
@@ -59,9 +61,9 @@ El código se analiza en vivo mientras escribís: se tokeniza, se parsea, se con
 ## Arquitectura
 
 ```
-Código fuente ──▶ Lexer ──▶ Tokens ──▶ Parser ──▶ AST ──▶ Simulador / Paneles
-                    │                    │
-                    └── errores léxicos ─┴── errores sintácticos
+Código fuente ──▶ Lexer ──▶ Tokens ──▶ Parser ──▶ AST ──▶ Semántico ──▶ Simulador / Paneles
+                    │                    │                   │
+                    └── errores léxicos ─┴─ err. sintácticos ┴─ err. y advertencias semánticas
 ```
 
 ```
@@ -69,6 +71,8 @@ src/
 ├── core/               # Frontend del compilador (sin dependencias de UI)
 │   ├── lexer.ts        #   Análisis léxico con recuperación de errores
 │   ├── parser.ts       #   Parser descendente recursivo LL(1) → AST
+│   ├── semantic.ts     #   Análisis semántico (estado de vuelo, rangos físicos)
+│   ├── simulator.ts    #   Motor de simulación: AST → trayectoria del dron
 │   └── __tests__/      #   Tests unitarios
 ├── components/         # UI: editor Monaco, paneles y simulador
 ├── hooks/
@@ -114,8 +118,9 @@ Esto garantiza que el parser descendente recursivo decide cada derivación con *
 
 ## Roadmap
 
-- [ ] Análisis semántico (validación de rangos de sensores, misiones sin `ATERRIZAR`, geofencing)
-- [ ] Diagnósticos en el editor (subrayado de errores en Monaco)
+- [x] Análisis semántico (estado de vuelo, rangos de sensores, misiones sin `ATERRIZAR`)
+- [x] Diagnósticos en el editor (subrayado de errores y advertencias en Monaco)
+- [ ] Geofencing: límites espaciales de vuelo verificados estáticamente
 - [ ] Extraer `core/` como paquete independiente + CLI (`dronescript check mision.ds`)
 - [x] Integración continua (lint + tipos + tests + build en cada push)
 - [x] Demo desplegada en Vercel

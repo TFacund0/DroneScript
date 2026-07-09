@@ -108,12 +108,22 @@ export interface ParseResult {
   errors: ParseError[];
 }
 
+// ── Semantic ─────────────────────────────────────────────────────────────────
+
+export interface SemanticError {
+  message: string;
+  line: number;
+  col?: number;
+  severity: "error" | "warning";
+}
+
 // ── Analyzer (hook) ───────────────────────────────────────────────────────────
 
 export interface AnalyzerResult {
   tokens: Token[];
   ast: ProgramaNode;
-  errors: Array<LexError | ParseError>;
+  errors: Array<LexError | ParseError | SemanticError>;
+  warnings: SemanticError[];
 }
 
 export type TabId = "tokens" | "ast" | "gramatica" | "simulacion" | "errores";
