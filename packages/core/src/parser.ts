@@ -13,7 +13,7 @@ import type {
   SensorNode,
   CondicionalNode,
   ErrorNode,
-} from "../types";
+} from "./types";
 
 /**
  * Analizador sintáctico (Parser) para el lenguaje DroneScript.

@@ -8,8 +8,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { tokenize } from "../src/core/lexer.js";
-import { parse } from "../src/core/parser.js";
+import { tokenize, parse } from "@dronescript/core";
 
 // Colores ANSI para la consola
 const RESET = "\x1b[0m";

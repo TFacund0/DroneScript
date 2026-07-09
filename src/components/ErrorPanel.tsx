@@ -1,4 +1,4 @@
-import type { AnalyzerResult } from "../types";
+import type { AnalyzerResult } from "@dronescript/core";
 
 interface Props {
   result: AnalyzerResult;

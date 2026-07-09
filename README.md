@@ -66,27 +66,46 @@ Código fuente ──▶ Lexer ──▶ Tokens ──▶ Parser ──▶ AST �
                     └── errores léxicos ─┴─ err. sintácticos ┴─ err. y advertencias semánticas
 ```
 
+El proyecto es un monorepo (pnpm workspaces) que separa el compilador de la interfaz:
+
 ```
-src/
-├── core/               # Frontend del compilador (sin dependencias de UI)
-│   ├── lexer.ts        #   Análisis léxico con recuperación de errores
-│   ├── parser.ts       #   Parser descendente recursivo LL(1) → AST
-│   ├── semantic.ts     #   Análisis semántico (estado de vuelo, rangos físicos)
-│   ├── simulator.ts    #   Motor de simulación: AST → trayectoria del dron
-│   └── __tests__/      #   Tests unitarios
-├── components/         # UI: editor Monaco, paneles y simulador
-├── hooks/
-│   └── useAnalyzer.ts  # Conecta el pipeline con React
-├── constants/          # Ejemplos de código y colores de tokens
-└── types.ts            # Tokens, nodos del AST y errores (tipado compartido)
-tests/
-├── cases.json          # Catálogo de casos válidos e inválidos
-└── runner.ts           # Runner de integración del pipeline completo
-docs/
-└── first_follow.md     # Demostración formal de que la gramática es LL(1)
+packages/
+├── core/               # @dronescript/core — el compilador (TypeScript puro, sin UI)
+│   └── src/
+│       ├── lexer.ts    #   Análisis léxico con recuperación de errores
+│       ├── parser.ts   #   Parser descendente recursivo LL(1) → AST
+│       ├── semantic.ts #   Análisis semántico (estado de vuelo, rangos físicos)
+│       ├── simulator.ts#   Motor de simulación: AST → trayectoria del dron
+│       ├── pipeline.ts #   Orquesta las tres fases: analyze(código)
+│       └── __tests__/  #   Tests unitarios de cada fase
+└── cli/                # @dronescript/cli — validador de misiones por terminal
+src/                    # Web app (React): editor Monaco, paneles y visualizador
+├── components/
+├── hooks/useAnalyzer.ts  # Conecta @dronescript/core con React
+└── constants/
+examples/               # Misiones .ds de ejemplo para el CLI
+tests/                  # Runner de integración + catálogo de casos (cases.json)
+docs/first_follow.md    # Demostración formal de que la gramática es LL(1)
 ```
 
-El núcleo del compilador (`src/core/`) es TypeScript puro sin dependencias de React, por lo que puede reutilizarse en un CLI, un backend o transpilarse a plataformas reales (PX4, ArduPilot, SDKs de fabricante).
+Como `@dronescript/core` no depende de React ni del navegador, el mismo compilador alimenta la web app, el CLI y los tests — y podría transpilarse a plataformas reales (PX4, ArduPilot, SDKs de fabricante).
+
+## CLI
+
+Las misiones también se pueden validar desde la terminal, sin abrir el navegador:
+
+```bash
+pnpm check examples/patrulla.ds
+# ✓ examples/patrulla.ds es una misión válida (28 tokens)
+
+pnpm check examples/invalida.ds
+# error examples/invalida.ds:2 Error semántico en línea 2: MOVER antes de DESPEGAR (el dron no está en vuelo)
+# error examples/invalida.ds:4 Error semántico en línea 4: 'bateria' solo puede valer entre 0 y 100% ...
+# advertencia examples/invalida.ds:1 ... la misión termina sin ATERRIZAR, el dron queda en el aire
+# ✗ 2 errores, 1 advertencia
+```
+
+El comando sale con código `1` si hay errores, por lo que sirve como paso de validación en pipelines de CI.
 
 ## Empezar
 
@@ -109,6 +128,7 @@ Otros comandos:
 | `pnpm test` | Tests unitarios de lexer y parser |
 | `pnpm test:watch` | Tests en modo watch |
 | `pnpm test:integration` | Pipeline completo sobre `tests/cases.json` |
+| `pnpm check <archivo.ds>` | Valida una misión desde la terminal (CLI) |
 
 ## Fundamento teórico
 
@@ -121,7 +141,7 @@ Esto garantiza que el parser descendente recursivo decide cada derivación con *
 - [x] Análisis semántico (estado de vuelo, rangos de sensores, misiones sin `ATERRIZAR`)
 - [x] Diagnósticos en el editor (subrayado de errores y advertencias en Monaco)
 - [ ] Geofencing: límites espaciales de vuelo verificados estáticamente
-- [ ] Extraer `core/` como paquete independiente + CLI (`dronescript check mision.ds`)
+- [x] Monorepo: compilador extraído como `@dronescript/core` + CLI (`pnpm check mision.ds`)
 - [x] Integración continua (lint + tipos + tests + build en cada push)
 - [x] Demo desplegada en Vercel
 

@@ -15,7 +15,7 @@ import type {
   AterrizarNode,
   SensorNode,
   CondicionalNode,
-} from "../../types";
+} from "../types";
 
 describe("DroneScript Parser", () => {
   it("debe parsear un programa básico válido", () => {

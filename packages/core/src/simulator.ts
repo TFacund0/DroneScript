@@ -1,4 +1,4 @@
-import type { ProgramaNode, CmdNode } from "../types";
+import type { ProgramaNode, CmdNode } from "./types";
 
 // ─── MOTOR DE SIMULACIÓN DE DRONESCRIPT ──────────────────────────────────────
 // Interpreta el AST y produce la secuencia de pasos físicos del dron

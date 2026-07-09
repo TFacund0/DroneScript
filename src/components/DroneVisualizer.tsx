@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { ProgramaNode } from "../types";
-import { interpretAST, type Step, type StepKind } from "../core/simulator";
+import {
+  interpretAST,
+  type ProgramaNode,
+  type Step,
+  type StepKind,
+} from "@dronescript/core";
 
 const CANVAS_W = 580;
 const CANVAS_H = 460;

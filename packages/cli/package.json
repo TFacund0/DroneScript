@@ -1,0 +1,13 @@
+{
+  "name": "@dronescript/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CLI de DroneScript: valida misiones .ds desde la terminal",
+  "bin": {
+    "dronescript": "./src/index.ts"
+  },
+  "dependencies": {
+    "@dronescript/core": "workspace:*"
+  }
+}

@@ -1,4 +1,4 @@
-import type { AnalyzerResult } from "../types";
+import type { AnalyzerResult } from "@dronescript/core";
 
 const TYPE_COLORS: Record<string, string> = {
   KEYWORD: "#00e5a0",

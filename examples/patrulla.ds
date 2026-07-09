@@ -1,0 +1,10 @@
+MISION "patrulla_campo"
+  DESPEGAR ALTITUD 100 m
+  MOVER norte 200 m VELOCIDAD 5
+  SENSOR temperatura FRECUENCIA 10 s
+  SI bateria < 20 ENTONCES
+    ATERRIZAR
+  FIN
+  MOVER BASE
+  ATERRIZAR
+FIN

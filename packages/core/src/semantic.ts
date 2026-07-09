@@ -1,4 +1,4 @@
-import type { ProgramaNode, CmdNode, SemanticError } from "../types";
+import type { ProgramaNode, CmdNode, SemanticError } from "./types";
 
 // ─── ANALIZADOR SEMÁNTICO DE DRONESCRIPT ─────────────────────────────────────
 // Tercera fase del pipeline: valida reglas que la gramática libre de contexto

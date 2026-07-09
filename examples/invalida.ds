@@ -1,0 +1,7 @@
+MISION "mision_con_errores"
+  MOVER norte 100 m
+  DESPEGAR ALTITUD 50 m
+  SI bateria > 150 ENTONCES
+    ATERRIZAR
+  FIN
+FIN

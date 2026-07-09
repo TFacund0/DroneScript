@@ -5,7 +5,7 @@ import type {
   MisionNode,
   BloqueNode,
   CmdNode,
-} from "../types";
+} from "@dronescript/core";
 
 type ASTNodeType = ProgramaNode | MisionNode | BloqueNode | CmdNode;
 

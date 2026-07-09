@@ -1,4 +1,4 @@
-import type { Token, LexError, LexResult } from "../types";
+import type { Token, LexError, LexResult } from "./types";
 
 const KEYWORDS = new Set([
   "MISION",

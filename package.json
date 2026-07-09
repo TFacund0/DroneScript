@@ -9,12 +9,14 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"packages/*/src/**/*.ts\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "vite-node tests/runner.ts"
+    "test:integration": "vite-node tests/runner.ts",
+    "check": "vite-node packages/cli/src/index.ts -- check"
   },
   "dependencies": {
+    "@dronescript/core": "workspace:*",
     "@monaco-editor/react": "^4.6.0",
     "monaco-editor": "^0.50.0",
     "react": "^18.2.0",

@@ -1,4 +1,4 @@
-import type { TokenType } from "../types";
+import type { TokenType } from "@dronescript/core";
 
 export const TOKEN_COLORS: Record<
   TokenType,

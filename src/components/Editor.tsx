@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import MonacoEditor, { type OnMount } from "@monaco-editor/react";
 import { EXAMPLES } from "../constants/exampleCode";
-import type { LexError, ParseError, SemanticError } from "../types";
+import type { LexError, ParseError, SemanticError } from "@dronescript/core";
 
 const EXAMPLE_LABELS = [
   { key: "valid1", label: "✓ simple" },
