@@ -9,10 +9,19 @@
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-vitest-6E9F18?logo=vitest&logoColor=white)
+![Coverage](https://img.shields.io/badge/coverage-94%25-4c1?logo=vitest&logoColor=white)
 [![Demo](https://img.shields.io/badge/demo-vercel-000000?logo=vercel&logoColor=white)](https://drone-script.vercel.app/)
 
-<!-- TODO: reemplazar por un screenshot o GIF real del simulador -->
-<!-- ![Demo de DroneScript](docs/demo.gif) -->
+![Simulador de DroneScript](docs/screenshot-simulacion.png)
+
+<details>
+<summary>Ver también: panel de tokens, AST y gramática</summary>
+
+|                    Tokens                    |                 AST                 |                     Gramática                     |
+| :-------------------------------------------: | :----------------------------------: | :-------------------------------------------------: |
+| ![Tokens](docs/screenshot-tokens.png) | ![AST](docs/screenshot-ast.png) | ![Gramática](docs/screenshot-gramatica.png) |
+
+</details>
 
 ## ¿Qué es?
 
@@ -125,8 +134,9 @@ Otros comandos:
 | `pnpm typecheck` | Solo verificación de tipos de TypeScript |
 | `pnpm lint` | ESLint sobre todo el proyecto |
 | `pnpm format` | Formatea el código con Prettier |
-| `pnpm test` | Tests unitarios de lexer y parser |
+| `pnpm test` | Tests unitarios de lexer, parser, semántico, simulador y CLI |
 | `pnpm test:watch` | Tests en modo watch |
+| `pnpm test:coverage` | Tests unitarios con reporte de cobertura |
 | `pnpm test:integration` | Pipeline completo sobre `tests/cases.json` |
 | `pnpm check <archivo.ds>` | Valida una misión desde la terminal (CLI) |
 
@@ -140,10 +150,11 @@ Esto garantiza que el parser descendente recursivo decide cada derivación con *
 
 - [x] Análisis semántico (estado de vuelo, rangos de sensores, misiones sin `ATERRIZAR`)
 - [x] Diagnósticos en el editor (subrayado de errores y advertencias en Monaco)
-- [ ] Geofencing: límites espaciales de vuelo verificados estáticamente
 - [x] Monorepo: compilador extraído como `@dronescript/core` + CLI (`pnpm check mision.ds`)
-- [x] Integración continua (lint + tipos + tests + build en cada push)
+- [x] Integración continua (lint + tipos + tests + cobertura + build en cada push)
 - [x] Demo desplegada en Vercel
+
+Ideas fuera de alcance por ahora (el proyecto cumplió su objetivo académico): geofencing con límites espaciales verificados estáticamente.
 
 ## Contexto académico
 
