@@ -30,8 +30,8 @@ jobs:
       - name: Chequeo de tipos
         run: pnpm typecheck
 
-      - name: Tests unitarios
-        run: pnpm test
+      - name: Tests unitarios (con cobertura)
+        run: pnpm test:coverage
 
       - name: Tests de integración
         run: pnpm test:integration

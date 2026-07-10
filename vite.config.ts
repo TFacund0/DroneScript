@@ -6,4 +6,12 @@ export default defineConfig({
   server: {
     port: 3000,
   },
+  test: {
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      include: ['packages/*/src/**/*.ts'],
+      exclude: ['**/__tests__/**', '**/*.d.ts'],
+    },
+  },
 });
