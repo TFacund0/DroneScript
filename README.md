@@ -1,4 +1,4 @@
-# 🚁 DroneScript
+# DroneScript
 
 > Lenguaje de dominio específico (DSL) para planificar, validar y simular misiones de drones — con lexer y parser LL(1) implementados desde cero en TypeScript, y un IDE web interactivo con simulación en tiempo real.
 
