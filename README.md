@@ -44,14 +44,14 @@ El código se analiza en vivo mientras escribís: se tokeniza, se parsea, se con
 
 ## Características
 
-- ✈️ **Lexer hecho a mano** con recuperación de errores: los caracteres inválidos se reportan sin detener el análisis.
-- 🌳 **Parser descendente recursivo LL(1)** que construye un Árbol de Sintaxis Abstracta (AST) tipado y reporta errores sintácticos con línea y columna.
-- 📐 **Gramática demostrada LL(1)**: los conjuntos FIRST y FOLLOW de cada no-terminal están documentados en [`docs/first_follow.md`](docs/first_follow.md).
-- 🧠 **Análisis semántico**: valida reglas que la gramática no puede expresar — mover el dron antes de despegar, despegues duplicados, misiones que terminan en el aire, condiciones físicamente imposibles (`bateria > 150`) — distinguiendo errores de advertencias.
-- 🔴 **Diagnostics en el editor**: los errores se subrayan en rojo (y las advertencias en amarillo) directamente sobre el código, como en VS Code.
-- 🖥️ **IDE web** con editor Monaco (el de VS Code), paneles de tokens, AST navegable, gramática y errores.
-- 🛰️ **Simulador visual** que interpreta el AST y anima la trayectoria del dron (direcciones, altitud, velocidad, sensores y condicionales).
-- 🧪 **Suite de tests**: unitarios para lexer y parser (Vitest) + pipeline de integración sobre un catálogo de casos válidos e inválidos ([`tests/cases.json`](tests/cases.json)).
+- **Lexer hecho a mano** con recuperación de errores: los caracteres inválidos se reportan sin detener el análisis.
+- **Parser descendente recursivo LL(1)** que construye un Árbol de Sintaxis Abstracta (AST) tipado y reporta errores sintácticos con línea y columna.
+- **Gramática demostrada LL(1)**: los conjuntos FIRST y FOLLOW de cada no-terminal están documentados en [`docs/first_follow.md`](docs/first_follow.md).
+- **Análisis semántico**: valida reglas que la gramática no puede expresar — mover el dron antes de despegar, despegues duplicados, misiones que terminan en el aire, condiciones físicamente imposibles (`bateria > 150`) — distinguiendo errores de advertencias.
+- **Diagnostics en el editor**: los errores se subrayan en rojo (y las advertencias en amarillo) directamente sobre el código, como en VS Code.
+- **IDE web** con editor Monaco (el de VS Code), paneles de tokens, AST navegable, gramática y errores.
+- **Simulador visual** que interpreta el AST y anima la trayectoria del dron (direcciones, altitud, velocidad, sensores y condicionales).
+- **Suite de tests**: unitarios para lexer y parser (Vitest) + pipeline de integración sobre un catálogo de casos válidos e inválidos ([`tests/cases.json`](tests/cases.json)).
 
 ## El lenguaje
 
